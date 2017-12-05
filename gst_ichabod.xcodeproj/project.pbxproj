@@ -1,0 +1,357 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D42E5A6B1F65705700C89691 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = D42E5A6A1F65705700C89691 /* main.c */; };
+		D42E5A741F65735400C89691 /* libgstcoreelements.so in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A721F65735400C89691 /* libgstcoreelements.so */; };
+		D42E5A751F65735400C89691 /* libgstcoretracers.so in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A731F65735400C89691 /* libgstcoretracers.so */; };
+		D42E5A7E1F65737E00C89691 /* libglib-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A791F65737E00C89691 /* libglib-2.0.0.dylib */; };
+		D42E5A7F1F65737E00C89691 /* libgmodule-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7A1F65737E00C89691 /* libgmodule-2.0.0.dylib */; };
+		D42E5A801F65737E00C89691 /* libgobject-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7B1F65737E00C89691 /* libgobject-2.0.0.dylib */; };
+		D42E5A811F65737E00C89691 /* libgstbase-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7C1F65737E00C89691 /* libgstbase-1.0.0.dylib */; };
+		D42E5A821F65737E00C89691 /* libgstreamer-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */; };
+		D4888C621FB61B9F00BD43F7 /* libogg.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */; };
+		D4C894781FD602AA00485CA5 /* horseman.c in Sources */ = {isa = PBXBuildFile; fileRef = D4C894761FD602AA00485CA5 /* horseman.c */; };
+		D4C8947D1FD6031600485CA5 /* libzmq.5.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */; };
+		D4C8947F1FD6038800485CA5 /* libuv.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947E1FD6038800485CA5 /* libuv.1.dylib */; };
+		D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */ = {isa = PBXBuildFile; fileRef = D4C894831FD7225700485CA5 /* gsthorsemansrc.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D42E5A651F65705700C89691 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		D42E5A671F65705700C89691 /* gst_ichabod */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gst_ichabod; sourceTree = BUILT_PRODUCTS_DIR; };
+		D42E5A6A1F65705700C89691 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		D42E5A721F65735400C89691 /* libgstcoreelements.so */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.bundle"; name = libgstcoreelements.so; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/gstreamer-1.0/libgstcoreelements.so"; sourceTree = "<group>"; };
+		D42E5A731F65735400C89691 /* libgstcoretracers.so */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.bundle"; name = libgstcoretracers.so; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/gstreamer-1.0/libgstcoretracers.so"; sourceTree = "<group>"; };
+		D42E5A761F65735D00C89691 /* gst_ichabod.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = gst_ichabod.xcodeproj; sourceTree = "<group>"; };
+		D42E5A791F65737E00C89691 /* libglib-2.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libglib-2.0.0.dylib"; path = "../../../../usr/local/Cellar/glib/2.52.3/lib/libglib-2.0.0.dylib"; sourceTree = "<group>"; };
+		D42E5A7A1F65737E00C89691 /* libgmodule-2.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgmodule-2.0.0.dylib"; path = "../../../../usr/local/Cellar/glib/2.52.3/lib/libgmodule-2.0.0.dylib"; sourceTree = "<group>"; };
+		D42E5A7B1F65737E00C89691 /* libgobject-2.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgobject-2.0.0.dylib"; path = "../../../../usr/local/Cellar/glib/2.52.3/lib/libgobject-2.0.0.dylib"; sourceTree = "<group>"; };
+		D42E5A7C1F65737E00C89691 /* libgstbase-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstbase-1.0.0.dylib"; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/libgstbase-1.0.0.dylib"; sourceTree = "<group>"; };
+		D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstreamer-1.0.0.dylib"; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/libgstreamer-1.0.0.dylib"; sourceTree = "<group>"; };
+		D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libogg.0.dylib; path = ../../../../usr/local/Cellar/libogg/1.3.2/lib/libogg.0.dylib; sourceTree = "<group>"; };
+		D4C894761FD602AA00485CA5 /* horseman.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = horseman.c; sourceTree = "<group>"; };
+		D4C894771FD602AA00485CA5 /* horseman.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = horseman.h; sourceTree = "<group>"; };
+		D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libzmq.5.dylib; path = ../../../../usr/local/Cellar/zeromq/4.2.2/lib/libzmq.5.dylib; sourceTree = "<group>"; };
+		D4C8947E1FD6038800485CA5 /* libuv.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libuv.1.dylib; path = ../../../../usr/local/Cellar/libuv/1.13.1/lib/libuv.1.dylib; sourceTree = "<group>"; };
+		D4C894831FD7225700485CA5 /* gsthorsemansrc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gsthorsemansrc.c; sourceTree = "<group>"; };
+		D4C894841FD7225700485CA5 /* gsthorsemansrc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gsthorsemansrc.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D42E5A641F65705700C89691 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4C8947F1FD6038800485CA5 /* libuv.1.dylib in Frameworks */,
+				D4C8947D1FD6031600485CA5 /* libzmq.5.dylib in Frameworks */,
+				D4888C621FB61B9F00BD43F7 /* libogg.0.dylib in Frameworks */,
+				D42E5A7E1F65737E00C89691 /* libglib-2.0.0.dylib in Frameworks */,
+				D42E5A7F1F65737E00C89691 /* libgmodule-2.0.0.dylib in Frameworks */,
+				D42E5A801F65737E00C89691 /* libgobject-2.0.0.dylib in Frameworks */,
+				D42E5A811F65737E00C89691 /* libgstbase-1.0.0.dylib in Frameworks */,
+				D42E5A821F65737E00C89691 /* libgstreamer-1.0.0.dylib in Frameworks */,
+				D42E5A741F65735400C89691 /* libgstcoreelements.so in Frameworks */,
+				D42E5A751F65735400C89691 /* libgstcoretracers.so in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D42E5A5E1F65705700C89691 = {
+			isa = PBXGroup;
+			children = (
+				D42E5A691F65705700C89691 /* gst_ichabod */,
+				D42E5A681F65705700C89691 /* Products */,
+				D42E5A711F65735400C89691 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		D42E5A681F65705700C89691 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D42E5A671F65705700C89691 /* gst_ichabod */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D42E5A691F65705700C89691 /* gst_ichabod */ = {
+			isa = PBXGroup;
+			children = (
+				D4C894831FD7225700485CA5 /* gsthorsemansrc.c */,
+				D4C894841FD7225700485CA5 /* gsthorsemansrc.h */,
+				D4C894761FD602AA00485CA5 /* horseman.c */,
+				D4C894771FD602AA00485CA5 /* horseman.h */,
+				D42E5A6A1F65705700C89691 /* main.c */,
+			);
+			path = gst_ichabod;
+			sourceTree = "<group>";
+		};
+		D42E5A711F65735400C89691 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D4C8947E1FD6038800485CA5 /* libuv.1.dylib */,
+				D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */,
+				D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */,
+				D42E5A791F65737E00C89691 /* libglib-2.0.0.dylib */,
+				D42E5A7A1F65737E00C89691 /* libgmodule-2.0.0.dylib */,
+				D42E5A7B1F65737E00C89691 /* libgobject-2.0.0.dylib */,
+				D42E5A7C1F65737E00C89691 /* libgstbase-1.0.0.dylib */,
+				D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */,
+				D42E5A761F65735D00C89691 /* gst_ichabod.xcodeproj */,
+				D42E5A721F65735400C89691 /* libgstcoreelements.so */,
+				D42E5A731F65735400C89691 /* libgstcoretracers.so */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D42E5A771F65735D00C89691 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D42E5A661F65705700C89691 /* gst_ichabod */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D42E5A6E1F65705700C89691 /* Build configuration list for PBXNativeTarget "gst_ichabod" */;
+			buildPhases = (
+				D42E5A631F65705700C89691 /* Sources */,
+				D42E5A641F65705700C89691 /* Frameworks */,
+				D42E5A651F65705700C89691 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = gst_ichabod;
+			productName = gst_ichabod;
+			productReference = D42E5A671F65705700C89691 /* gst_ichabod */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D42E5A5F1F65705700C89691 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0830;
+				ORGANIZATIONNAME = "Charley Robinson";
+				TargetAttributes = {
+					D42E5A661F65705700C89691 = {
+						CreatedOnToolsVersion = 8.3.3;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = D42E5A621F65705700C89691 /* Build configuration list for PBXProject "gst_ichabod" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = D42E5A5E1F65705700C89691;
+			productRefGroup = D42E5A681F65705700C89691 /* Products */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = D42E5A771F65735D00C89691 /* Products */;
+					ProjectRef = D42E5A761F65735D00C89691 /* gst_ichabod.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				D42E5A661F65705700C89691 /* gst_ichabod */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D42E5A631F65705700C89691 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */,
+				D4C894781FD602AA00485CA5 /* horseman.c in Sources */,
+				D42E5A6B1F65705700C89691 /* main.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		D42E5A6C1F65705700C89691 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D42E5A6D1F65705700C89691 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		D42E5A6F1F65705700C89691 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					"/usr/local/include/gstreamer-1.0",
+					"/usr/local/include/glib-2.0",
+					"/usr/local/lib/glib-2.0/include",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/Cellar/glib/2.52.3/lib,
+					/usr/local/Cellar/gstreamer/1.12.2/lib,
+					/usr/local/Cellar/libogg/1.3.2/lib,
+					/usr/local/Cellar/zeromq/4.2.2/lib,
+					/usr/local/Cellar/libuv/1.13.1/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		D42E5A701F65705700C89691 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					"/usr/local/include/gstreamer-1.0",
+					"/usr/local/include/glib-2.0",
+					"/usr/local/lib/glib-2.0/include",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/Cellar/glib/2.52.3/lib,
+					/usr/local/Cellar/gstreamer/1.12.2/lib,
+					/usr/local/Cellar/libogg/1.3.2/lib,
+					/usr/local/Cellar/zeromq/4.2.2/lib,
+					/usr/local/Cellar/libuv/1.13.1/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D42E5A621F65705700C89691 /* Build configuration list for PBXProject "gst_ichabod" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D42E5A6C1F65705700C89691 /* Debug */,
+				D42E5A6D1F65705700C89691 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D42E5A6E1F65705700C89691 /* Build configuration list for PBXNativeTarget "gst_ichabod" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D42E5A6F1F65705700C89691 /* Debug */,
+				D42E5A701F65705700C89691 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D42E5A5F1F65705700C89691 /* Project object */;
+}
