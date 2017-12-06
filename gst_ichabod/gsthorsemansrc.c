@@ -1,6 +1,7 @@
 
 #include <gst/gst.h>
 #include "gsthorsemansrc.h"
+#include "base64.h"
 
 /* GObject */
 static void gst_horsemansrc_get_property
@@ -12,6 +13,8 @@ static void gst_horsemansrc_finalize(GObject *object);
 /* GstBaseSrc */
 static gboolean gst_horsemansrc_start (GstBaseSrc *src);
 static gboolean gst_horsemansrc_stop (GstBaseSrc *src);
+static gboolean gst_horsemansrc_unlock (GstBaseSrc * pthis);
+static gboolean gst_horsemansrc_unlock_stop (GstBaseSrc * pthis);
 
 /* GstPushSrc */
 static GstFlowReturn
@@ -20,6 +23,11 @@ gst_horsemansrc_create (GstPushSrc * src, GstBuffer ** buf);
 /* GstElement */
 static GstStateChangeReturn gst_horsemansrc_change_state
 (GstElement * element, GstStateChange transition);
+
+/* Horseman */
+void on_horseman_cb(struct horseman_s* queue,
+                    struct horseman_msg_s* msg,
+                    void* p);
 
 #pragma mark - Plugin Definitions
 
@@ -45,13 +53,9 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   
   gst_element_class_add_pad_template
   (element_class,
-   gst_pad_template_new ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
-                         gst_caps_new_empty_simple("image/jpeg")));
-  
-  basesrc_class->start = gst_horsemansrc_start;
-  basesrc_class->stop = gst_horsemansrc_stop;
-  
-  pushsrc_class->create = gst_horsemansrc_create;
+   gst_pad_template_new
+   ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
+    gst_caps_new_empty_simple("image/jpeg")));
   
   gst_element_class_set_static_metadata
   (element_class,
@@ -59,6 +63,14 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
    "Source/Image",
    "horseman video source",
    "charley");
+  
+  basesrc_class->start = gst_horsemansrc_start;
+  basesrc_class->stop = gst_horsemansrc_stop;
+  basesrc_class->unlock = gst_horsemansrc_unlock;
+  basesrc_class->unlock_stop = gst_horsemansrc_unlock_stop;
+  
+  pushsrc_class->create = gst_horsemansrc_create;
+  
 }
 
 /* initialize the new element
@@ -71,6 +83,16 @@ gst_horsemansrc_init (GstHorsemanSrc* pthis)
 {
   gst_base_src_set_format (GST_BASE_SRC (pthis), GST_FORMAT_TIME);
   gst_base_src_set_live (GST_BASE_SRC (pthis), TRUE);
+  
+  struct horseman_config_s hconf;
+  horseman_alloc(&pthis->horseman);
+  hconf.p = pthis;
+  hconf.on_video_msg = on_horseman_cb;
+  horseman_load_config(pthis->horseman, &hconf);
+  
+  pthis->frame_queue = g_queue_new();
+  g_mutex_init(&pthis->mutex);
+  g_cond_init(&pthis->data_ready);
 }
 
 // magic macros autodiscover the two functions named above this one :-|
@@ -112,26 +134,97 @@ static GstStateChangeReturn gst_horsemansrc_change_state
 {
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
   g_print("ghorse: state: %d\n", transition);
+  
+  // pass state change to parent element
+  ret = GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
+  
   return ret;
 }
 
 #pragma mark - Base Source Class Methods
-static gboolean gst_horsemansrc_start (GstBaseSrc *src) {
+static gboolean gst_horsemansrc_start(GstBaseSrc* base) {
   g_print("ghorse: start\n");
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
+  return (0 == horseman_start(pthis->horseman));
+}
+
+static gboolean gst_horsemansrc_stop(GstBaseSrc* base) {
+  g_print("ghorse: stop\n");
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
+  return 0 == horseman_stop(pthis->horseman);
+}
+
+static gboolean gst_horsemansrc_unlock(GstBaseSrc* base)
+{
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
+  g_print("ghorse: unlock\n");
+  g_mutex_lock(&pthis->mutex);
+  pthis->flushing = TRUE;
+  g_cond_broadcast(&pthis->data_ready);
+  g_mutex_unlock(&pthis->mutex);
   return TRUE;
 }
 
-static gboolean gst_horsemansrc_stop (GstBaseSrc *src) {
-  g_print("ghorse: stop\n");
+static gboolean gst_horsemansrc_unlock_stop(GstBaseSrc* base)
+{
+  GstHorsemanSrc *pthis = GST_HORSEMANSRC (base);
+  g_print("ghorse: unlock_stop\n");
+  g_mutex_lock(&pthis->mutex);
+  pthis->flushing = FALSE;
+  g_cond_broadcast(&pthis->data_ready);
+  g_mutex_unlock(&pthis->mutex);
   return TRUE;
 }
 
 #pragma mark - Push Source Class Methods
-static GstFlowReturn
-gst_horsemansrc_create (GstPushSrc * src, GstBuffer ** buf)
+static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
 {
   g_print("ghorse: pushsrc.create\n");
-  return GST_FLOW_OK;
+  GstFlowReturn ret;
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(src);
+  g_mutex_lock(&pthis->mutex);
+  while (g_queue_is_empty(pthis->frame_queue) && !pthis->flushing) {
+    g_print("ghorse: still waiting\n");
+    g_cond_wait(&pthis->data_ready, &pthis->mutex);
+  }
+  GstBuffer* head = g_queue_pop_head(pthis->frame_queue);
+  ret = head ? GST_FLOW_OK : GST_FLOW_ERROR;
+  *buf = head;
+  if (pthis->flushing) {
+    ret = GST_FLOW_EOS;
+  }
+  g_mutex_unlock(&pthis->mutex);
+  g_print("ghorse: create ret %d\n", ret);
+  return ret;
+}
+
+#pragma mark - Horseman
+
+void on_horseman_cb(struct horseman_s* queue,
+                    struct horseman_msg_s* msg,
+                    void* p)
+{
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(p);
+  GstElement* element = GST_ELEMENT(p);
+  size_t b_length = 0;
+  const uint8_t* b_img =
+  base64_decode((const unsigned char*)msg->sz_data,
+                strlen(msg->sz_data),
+                &b_length);
+  GstBuffer* buf = gst_buffer_new_wrapped(b_img, b_length);
+  
+  // TODO: How does this clock mechanism work?
+  //GstClockTime base_time = gst_element_get_base_time(element);
+  //buf->pts = msg->timestamp;
+  buf->pts = gst_clock_get_time(gst_element_get_clock(element));
+  buf->dts = buf->pts;
+  
+  g_mutex_lock(&pthis->mutex);
+  g_queue_push_tail(pthis->frame_queue, buf);
+  //size_t len = g_queue_get_length(pthis->frame_queue);
+  g_print("queue push pts %d\n", buf->pts);
+  g_cond_broadcast(&pthis->data_ready);
+  g_mutex_unlock(&pthis->mutex);
 }
 
 #pragma mark GStreamer plugin registration
@@ -146,14 +239,13 @@ gst_horsemansrc_create (GstPushSrc * src, GstBuffer ** buf)
 #endif
 
 GST_PLUGIN_DEFINE (
- GST_VERSION_MAJOR,
- GST_VERSION_MINOR,
- horsemansrc,
- "Template plugin",
- horsemansrc_init,
- "0.0.1",
- "LGPL",
- "horseman",
- "https://wobbals.github.io/horseman/"
-)
-
+                   GST_VERSION_MAJOR,
+                   GST_VERSION_MINOR,
+                   horsemansrc,
+                   "Template plugin",
+                   horsemansrc_init,
+                   "0.0.1",
+                   "LGPL",
+                   "horseman",
+                   "https://wobbals.github.io/horseman/"
+                   )

@@ -15,7 +15,6 @@
 struct horseman_s {
   void* zmq_ctx;
   void* screencast_socket;
-  void* blobsink_socket;
   char is_interrupted;
   uv_thread_t zmq_thread;
   
@@ -38,6 +37,8 @@ static void horseman_loop_main(void* p) {
   int ret = 0;
   while (pthis->is_running && 0 == ret) {
     ret = uv_run(pthis->loop, UV_RUN_DEFAULT);
+    // todo: why is this not running on a poll?
+    usleep(10000);
   }
   printf("horseman: exiting worker loop\n");
 }
@@ -170,19 +171,16 @@ static void horseman_zmq_main(void* p) {
   struct horseman_s* pthis = (struct horseman_s*)p;
   int t = 10;
   ret = zmq_connect(pthis->screencast_socket, "ipc:///tmp/ichabod-screencast");
-  ret = zmq_connect(pthis->blobsink_socket, "ipc:///tmp/ichabod-blobsink");
   if (ret) {
     printf("failed to connect to media queue socket. errno %d\n", errno);
     return;
   }
   ret = zmq_setsockopt(pthis->screencast_socket, ZMQ_RCVTIMEO, &t, sizeof(int));
-  ret = zmq_setsockopt(pthis->blobsink_socket, ZMQ_RCVTIMEO, &t, sizeof(int));
   while (!pthis->is_interrupted) {
     char got_screencast = 0;
     ret = receive_screencast(pthis, &got_screencast);
   }
   zmq_close(pthis->screencast_socket);
-  zmq_close(pthis->blobsink_socket);
 }
 
 void horseman_load_config(struct horseman_s* pthis,
@@ -197,19 +195,8 @@ int horseman_alloc(struct horseman_s** queue) {
   (struct horseman_s*)calloc(1, sizeof(struct horseman_s));
   pthis->zmq_ctx = zmq_ctx_new();
   pthis->screencast_socket = zmq_socket(pthis->zmq_ctx, ZMQ_PULL);
-  pthis->blobsink_socket = zmq_socket(pthis->zmq_ctx, ZMQ_PULL);
   uv_mutex_init(&pthis->work_lock);
-
-  // shape the thread pool a bit
-  uv_cpu_info_t* cpu_infos;
-  int cpu_count;
-  uv_cpu_info(&cpu_infos, &cpu_count);
-  cpu_count = fmax(1, cpu_count - 1);
-  char str[4];
-  sprintf(str, "%d", cpu_count);
-  uv_free_cpu_info(cpu_infos, cpu_count);
-  // ...or, don't. your mileage may vary. see what works for you.
-  setenv("UV_THREADPOOL_SIZE", str, 0);
+  
   pthis->loop = (uv_loop_t*) malloc(sizeof(uv_loop_t));
   uv_loop_init(pthis->loop);
 

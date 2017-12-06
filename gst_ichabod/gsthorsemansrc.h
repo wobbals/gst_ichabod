@@ -4,6 +4,7 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasesrc.h>
 #include <gst/base/gstpushsrc.h>
+#include "horseman.h"
 
 G_BEGIN_DECLS
 
@@ -24,6 +25,12 @@ typedef struct _GstHorsemanSrcClass GstHorsemanSrcClass;
 struct _GstHorsemanSrc {
   GstPushSrcClass push_src;
   GstPad *srcpad;
+  
+  struct horseman_s* horseman;
+  GQueue* frame_queue;
+  GMutex mutex;
+  GCond data_ready;
+  gboolean flushing;
 };
 
 struct _GstHorsemanSrcClass
