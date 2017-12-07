@@ -3,6 +3,14 @@
 #include "gsthorsemansrc.h"
 #include "base64.h"
 
+enum {
+  /* signals */
+  SIGNAL_FIRST_FRAME,
+  LAST_SIGNAL
+};
+
+static guint gst_horsemansrc_signals[LAST_SIGNAL] = { 0 };
+
 /* GObject */
 static void gst_horsemansrc_get_property
 (GObject * object, guint prop_id, GValue * value, GParamSpec * pspec);
@@ -71,6 +79,10 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   
   pushsrc_class->create = gst_horsemansrc_create;
   
+  gst_horsemansrc_signals[SIGNAL_FIRST_FRAME] =
+  g_signal_new ("first-frame", G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST, 0,
+                NULL, NULL, NULL, G_TYPE_NONE, 0, NULL);
 }
 
 /* initialize the new element
@@ -145,6 +157,7 @@ static GstStateChangeReturn gst_horsemansrc_change_state
 static gboolean gst_horsemansrc_start(GstBaseSrc* base) {
   g_print("ghorse: start\n");
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
+  pthis->is_eos = FALSE;
   return (0 == horseman_start(pthis->horseman));
 }
 
@@ -183,7 +196,10 @@ static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
   GstFlowReturn ret;
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(src);
   g_mutex_lock(&pthis->mutex);
-  while (g_queue_is_empty(pthis->frame_queue) && !pthis->flushing) {
+  while (g_queue_is_empty(pthis->frame_queue) &&
+         !pthis->flushing &&
+         !pthis->is_eos)
+  {
     g_print("ghorse: still waiting\n");
     g_cond_wait(&pthis->data_ready, &pthis->mutex);
   }
@@ -191,14 +207,35 @@ static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
   ret = head ? GST_FLOW_OK : GST_FLOW_ERROR;
   *buf = head;
   if (pthis->flushing) {
+    ret = GST_FLOW_FLUSHING;
+  }
+  if (pthis->is_eos) {
     ret = GST_FLOW_EOS;
   }
+  gboolean signal_first_frame = FALSE;
+  if (!pthis->first_frame_received && GST_FLOW_OK == ret) {
+    signal_first_frame = TRUE;
+    pthis->first_frame_received = TRUE;
+  }
   g_mutex_unlock(&pthis->mutex);
+  if (signal_first_frame) {
+    g_signal_emit(pthis, gst_horsemansrc_signals[SIGNAL_FIRST_FRAME], NULL);
+  }
   g_print("ghorse: create ret %d\n", ret);
   return ret;
 }
 
 #pragma mark - Horseman
+
+static GstBuffer* wrap_message(struct horseman_msg_s* msg) {
+  size_t b_length = 0;
+  const uint8_t* b_img =
+  base64_decode((const unsigned char*)msg->sz_data,
+                strlen(msg->sz_data),
+                &b_length);
+  GstBuffer* buf = gst_buffer_new_wrapped(b_img, b_length);
+  return buf;
+}
 
 void on_horseman_cb(struct horseman_s* queue,
                     struct horseman_msg_s* msg,
@@ -206,23 +243,25 @@ void on_horseman_cb(struct horseman_s* queue,
 {
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(p);
   GstElement* element = GST_ELEMENT(p);
-  size_t b_length = 0;
-  const uint8_t* b_img =
-  base64_decode((const unsigned char*)msg->sz_data,
-                strlen(msg->sz_data),
-                &b_length);
-  GstBuffer* buf = gst_buffer_new_wrapped(b_img, b_length);
+  GstBuffer* buf = NULL;
   
-  // TODO: How does this clock mechanism work?
-  //GstClockTime base_time = gst_element_get_base_time(element);
-  //buf->pts = msg->timestamp;
-  buf->pts = gst_clock_get_time(gst_element_get_clock(element));
-  buf->dts = buf->pts;
+  if (!msg->eos) {
+    buf = wrap_message(msg);
+    // TODO: How does this clock mechanism work?
+    //GstClockTime base_time = gst_element_get_base_time(element);
+    //buf->pts = msg->timestamp;
+    buf->pts = gst_clock_get_time(gst_element_get_clock(element));
+    buf->dts = buf->pts;
+  }
   
   g_mutex_lock(&pthis->mutex);
-  g_queue_push_tail(pthis->frame_queue, buf);
-  //size_t len = g_queue_get_length(pthis->frame_queue);
-  g_print("queue push pts %d\n", buf->pts);
+  if (buf) {
+    g_queue_push_tail(pthis->frame_queue, buf);
+    //size_t len = g_queue_get_length(pthis->frame_queue);
+    g_print("queue push pts %d\n", buf->pts);
+  } else if (msg->eos) {
+    pthis->is_eos = TRUE;
+  }
   g_cond_broadcast(&pthis->data_ready);
   g_mutex_unlock(&pthis->mutex);
 }
@@ -238,14 +277,15 @@ void on_horseman_cb(struct horseman_s* queue,
 #define PACKAGE "horsemansrc"
 #endif
 
-GST_PLUGIN_DEFINE (
-                   GST_VERSION_MAJOR,
-                   GST_VERSION_MINOR,
-                   horsemansrc,
-                   "Template plugin",
-                   horsemansrc_init,
-                   "0.0.1",
-                   "LGPL",
-                   "horseman",
-                   "https://wobbals.github.io/horseman/"
-                   )
+GST_PLUGIN_DEFINE
+(
+ GST_VERSION_MAJOR,
+ GST_VERSION_MINOR,
+ horsemansrc,
+ "horseman plugin",
+ horsemansrc_init,
+ "0.0.1",
+ "LGPL",
+ "horseman",
+ "https://wobbals.github.io/horseman/"
+ )

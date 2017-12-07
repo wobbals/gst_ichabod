@@ -31,6 +31,8 @@ struct _GstHorsemanSrc {
   GMutex mutex;
   GCond data_ready;
   gboolean flushing;
+  gboolean is_eos;
+  gboolean first_frame_received;
 };
 
 struct _GstHorsemanSrcClass

@@ -21,6 +21,7 @@ struct horseman_msg_s {
   char* sz_data;
   double timestamp;
   char* sz_sid;
+  char eos;
 };
 
 struct horseman_config_s {

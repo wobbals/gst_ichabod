@@ -38,7 +38,7 @@ static void horseman_loop_main(void* p) {
   while (pthis->is_running && 0 == ret) {
     ret = uv_run(pthis->loop, UV_RUN_DEFAULT);
     // todo: why is this not running on a poll?
-    usleep(10000);
+    usleep(1000);
   }
   printf("horseman: exiting worker loop\n");
 }
@@ -83,6 +83,9 @@ static int receive_message(void* socket, struct horseman_msg_s* msg,
   if (msg->sz_sid) {
     free(msg->sz_sid);
   }
+  if (msg->eos) {
+    msg->eos = 0;
+  }
   memset(msg, 0, sizeof(struct horseman_msg_s));
   while (1) {
     zmq_msg_t message;
@@ -110,7 +113,14 @@ static int receive_message(void* socket, struct horseman_msg_s* msg,
       printf("unknown extra message part received. freeing.");
       free(sz_msg);
     }
-
+    if (!strcmp("EOS", msg->sz_data)) {
+      printf("horseman: received EOS\n");
+      free(msg->sz_data);
+      msg->sz_data = NULL;
+      msg->eos = 1;
+      break;
+    }
+    
     zmq_msg_close (&message);
     if (!zmq_msg_more (&message))
       break;      //  Last message frame

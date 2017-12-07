@@ -98,12 +98,12 @@
 		D42E5A691F65705700C89691 /* gst_ichabod */ = {
 			isa = PBXGroup;
 			children = (
-				D4ECAE7C1FD89794006A31C5 /* base64.c */,
 				D4ECAE7B1FD89794006A31C5 /* base64.h */,
-				D4C894831FD7225700485CA5 /* gsthorsemansrc.c */,
-				D4C894841FD7225700485CA5 /* gsthorsemansrc.h */,
-				D4C894761FD602AA00485CA5 /* horseman.c */,
+				D4ECAE7C1FD89794006A31C5 /* base64.c */,
 				D4C894771FD602AA00485CA5 /* horseman.h */,
+				D4C894761FD602AA00485CA5 /* horseman.c */,
+				D4C894841FD7225700485CA5 /* gsthorsemansrc.h */,
+				D4C894831FD7225700485CA5 /* gsthorsemansrc.c */,
 				D42E5A6A1F65705700C89691 /* main.c */,
 			);
 			path = gst_ichabod;
