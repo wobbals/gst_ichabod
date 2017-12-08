@@ -15,10 +15,12 @@
 struct ichabod_s {
   GstElement* pipeline;
   GstElement* asource;
+  GstElement* aqueue;
   GstElement* aconv;
   GstElement* aenc;
   
   GstElement* vsource;
+  GstElement* vqueue;
   GstElement* imgdec;
   GstElement* fps;
   GstElement* venc;
@@ -40,10 +42,11 @@ bus_call (GstBus     *bus,
   switch (GST_MESSAGE_TYPE (msg)) {
       
     case GST_MESSAGE_EOS:
+    {
       g_print ("End of stream\n");
       g_main_loop_quit (loop);
       break;
-      
+    }
     case GST_MESSAGE_ERROR: {
       gchar  *debug;
       GError *error;
@@ -57,8 +60,29 @@ bus_call (GstBus     *bus,
       g_main_loop_quit (loop);
       break;
     }
-    default:
+      
+    case GST_MESSAGE_STREAM_STATUS:
+    {
+      GstStreamStatusType type;
+      GstElement* owner;
+      //GstObject* src = GST_MESSAGE_SRC(msg);
+      //gchar* name = gst_object_get_name(src);
+      gst_message_parse_stream_status(msg, &type, &owner);
+      gchar* name = gst_element_get_name(owner);
+      g_print("Stream %s: Status = %d\n", name, type);
       break;
+    }
+      
+    case GST_MESSAGE_STATE_CHANGED:
+    {
+      g_print("state change\n");
+      break;
+    }
+    default:
+    {
+      g_print("other event\n");
+      break;
+    }
   }
   
   return TRUE;
@@ -82,12 +106,25 @@ on_pad_added (GstElement *element,
   gst_object_unref (sinkpad);
 }
 
-static void on_video_live(GstElement *src, struct ichabod_s* pthis, GstPad *pad)
+static GstPadProbeReturn on_video_live(GstPad *pad, GstPadProbeInfo *info,
+                                       gpointer p_user)
 {
   gboolean result;
+  struct ichabod_s* pthis = p_user;
   GstPad* apad = gst_element_get_static_pad(pthis->asource, "src");
+  if (!pad) {
+    return GST_PAD_PROBE_OK;
+  }
   result = gst_pad_is_active(apad);
-  //gst_pad_set_active(apad, TRUE);
+  if (!result) {
+    result = gst_pad_set_active(apad, TRUE);
+  }
+  if (!result) {
+    g_printerr("failed to unpause audio source pad\n");
+  }
+  // we just need a hook for first frame received. everything can proceed
+  // as usual herein
+  return GST_PAD_PROBE_REMOVE;
 }
 
 static void on_interrupt(int sig) {
@@ -115,7 +152,6 @@ main (int   argc,
   
   //signal(SIGINT, on_interrupt);
   
-  
   /* Initialisation */
   gst_init (&argc, &argv);
   gst_plugin_register_static(GST_VERSION_MAJOR, GST_VERSION_MINOR,
@@ -130,9 +166,11 @@ main (int   argc,
   /* Create gstreamer elements */
   ichabod.pipeline = gst_pipeline_new ("ichabod");
   asource   = gst_element_factory_make("pulsesrc", "pulse-audio");
+  ichabod.aqueue = gst_element_factory_make("queue", "aqueue");
   aconv     = gst_element_factory_make ("audioconvert", "audio-converter");
   aenc      = gst_element_factory_make ("faac", "faaaaac");
   vsource   = gst_element_factory_make ("horsemansrc", "horseman");
+  ichabod.vqueue = gst_element_factory_make("queue", "vqueue");
   fps       = gst_element_factory_make ("videorate", "constant-fps");
   imgdec    = gst_element_factory_make ("jpegdec", "jpeg-decoder");
   venc      = gst_element_factory_make ("x264enc", "H.264 encoder");
@@ -144,12 +182,13 @@ main (int   argc,
     return -1;
   }
   
-  if (!vsource || !imgdec || !venc || !fps || !mux || !sink) {
+  if (!vsource || !ichabod.vqueue || !imgdec || !venc || !fps || !mux || !sink)
+  {
     g_printerr ("Video components missing. Check gst installation.\n");
     return -1;
   }
   
-  if (!asource || !aconv || !aenc) {
+  if (!asource || !ichabod.aqueue || !aconv || !aenc) {
     g_printerr("Audio components could not be created. Check gst install.\n");
   }
   
@@ -170,14 +209,22 @@ main (int   argc,
   //g_object_set (G_OBJECT (source), "device", "0", NULL);
   
   // configure video source
-  g_signal_connect(vsource, "first-frame", G_CALLBACK(on_video_live), &ichabod);
+  GstPad* vsrc_pad = gst_element_get_static_pad(vsource, "src");
+  gst_pad_add_probe(vsrc_pad,
+                    GST_PAD_PROBE_TYPE_BLOCK |
+                    GST_PAD_PROBE_TYPE_SCHEDULING |
+                    GST_PAD_PROBE_TYPE_BUFFER,
+                    on_video_live,
+                    &ichabod, NULL);
   
   // configure output sink
   g_object_set (G_OBJECT (sink), "location", "output.mp4", NULL);
   
   // configure video encoder
-  // ultrafast not accessible by string? I'm doing something wrong here.
+  // TODO: ultrafast not accessible by string? I'm doing something wrong here.
   g_object_set(G_OBJECT(venc), "speed-preset", 0, NULL);
+  // Profile also seems ignored, while we're at it...
+  g_object_set(G_OBJECT(venc), "profile", 1, NULL);
   g_object_set(G_OBJECT(venc), "qp-min", 18, NULL);
   g_object_set(G_OBJECT(venc), "qp-max", 22, NULL);
   
@@ -193,20 +240,27 @@ main (int   argc,
   
   // add all elements into the pipeline
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
-                   vsource, fps, imgdec, venc, mux, sink, NULL);
+                   vsource, ichabod.vqueue,
+                   fps, imgdec, venc, mux, sink, NULL);
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
-                   asource, aconv, aenc, NULL);
+                   asource, ichabod.aqueue, aconv, aenc, NULL);
 
   // link the elements together
-  result = gst_element_link_many(vsource, fps, imgdec, venc, mux, sink, NULL);
-  result = gst_element_link_many(asource, aconv, aenc, mux, NULL);
+  result = gst_element_link_many(vsource, ichabod.vqueue,
+                                 fps, imgdec, venc, mux, sink,
+                                 NULL);
+  result = gst_element_link_many(asource, ichabod.aqueue,
+                                 aconv, aenc, mux, NULL);
   
   /* Set the pipeline to "playing" state */
   gst_element_set_state (ichabod.pipeline, GST_STATE_PLAYING);
 
   // halt audio pad until after we've got a video frame.
   GstPad* apad = gst_element_get_static_pad(asource, "src");
-  gst_pad_set_active(apad, FALSE);
+  result = gst_pad_set_active(apad, FALSE);
+  if (!result) {
+    g_printerr("failed to pause audio source pad\n");
+  }
 
   /* Iterate */
   g_print ("Running...\n");

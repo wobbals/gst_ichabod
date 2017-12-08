@@ -155,7 +155,11 @@ static int receive_screencast(struct horseman_s* pthis, char* got_message) {
   // process message
   if (ret) {
     printf("trouble? %d %d\n", ret, errno);
-  } else if (*got_message) {
+  } else if (*got_message && msg->eos) {
+    // let the dispatch_video_msg job post, but break the main receiver loop
+    pthis->is_interrupted = 1;
+  }
+  if (*got_message) {
     printf("received screencast  ts=%f\n",
            msg->timestamp);
 

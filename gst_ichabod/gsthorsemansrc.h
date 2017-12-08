@@ -32,7 +32,7 @@ struct _GstHorsemanSrc {
   GCond data_ready;
   gboolean flushing;
   gboolean is_eos;
-  gboolean first_frame_received;
+  uint64_t frame_ct;
 };
 
 struct _GstHorsemanSrcClass

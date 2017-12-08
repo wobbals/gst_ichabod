@@ -5,7 +5,6 @@
 
 enum {
   /* signals */
-  SIGNAL_FIRST_FRAME,
   LAST_SIGNAL
 };
 
@@ -23,6 +22,7 @@ static gboolean gst_horsemansrc_start (GstBaseSrc *src);
 static gboolean gst_horsemansrc_stop (GstBaseSrc *src);
 static gboolean gst_horsemansrc_unlock (GstBaseSrc * pthis);
 static gboolean gst_horsemansrc_unlock_stop (GstBaseSrc * pthis);
+static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event);
 
 /* GstPushSrc */
 static GstFlowReturn
@@ -79,10 +79,6 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   
   pushsrc_class->create = gst_horsemansrc_create;
   
-  gst_horsemansrc_signals[SIGNAL_FIRST_FRAME] =
-  g_signal_new ("first-frame", G_TYPE_FROM_CLASS (klass),
-                G_SIGNAL_RUN_LAST, 0,
-                NULL, NULL, NULL, G_TYPE_NONE, 0, NULL);
 }
 
 /* initialize the new element
@@ -189,6 +185,11 @@ static gboolean gst_horsemansrc_unlock_stop(GstBaseSrc* base)
   return TRUE;
 }
 
+static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event) {
+  g_print("ghorse event: %s\n", gst_event_type_get_name(gst_event_get_type()));
+  return GST_BASE_SRC_CLASS (parent_class)->event (src, event);
+}
+
 #pragma mark - Push Source Class Methods
 static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
 {
@@ -212,15 +213,7 @@ static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
   if (pthis->is_eos) {
     ret = GST_FLOW_EOS;
   }
-  gboolean signal_first_frame = FALSE;
-  if (!pthis->first_frame_received && GST_FLOW_OK == ret) {
-    signal_first_frame = TRUE;
-    pthis->first_frame_received = TRUE;
-  }
   g_mutex_unlock(&pthis->mutex);
-  if (signal_first_frame) {
-    g_signal_emit(pthis, gst_horsemansrc_signals[SIGNAL_FIRST_FRAME], NULL);
-  }
   g_print("ghorse: create ret %d\n", ret);
   return ret;
 }
@@ -249,16 +242,22 @@ void on_horseman_cb(struct horseman_s* queue,
     buf = wrap_message(msg);
     // TODO: How does this clock mechanism work?
     //GstClockTime base_time = gst_element_get_base_time(element);
-    //buf->pts = msg->timestamp;
-    buf->pts = gst_clock_get_time(gst_element_get_clock(element));
+    buf->pts = msg->timestamp;
+//    GstClock* clock = gst_element_get_clock(element);
+//    GstClockTime base_time =
+//    gst_element_get_base_time(element);
+//    GstClockTime current_time = gst_clock_get_time(clock);
+//    buf->pts = fmax(0, current_time - base_time);
     buf->dts = buf->pts;
   }
   
   g_mutex_lock(&pthis->mutex);
+  pthis->frame_ct++;
   if (buf) {
     g_queue_push_tail(pthis->frame_queue, buf);
-    //size_t len = g_queue_get_length(pthis->frame_queue);
-    g_print("queue push pts %d\n", buf->pts);
+    size_t len = g_queue_get_length(pthis->frame_queue);
+    g_print("queue push pts %llu n=%d tot=%llu\n",
+            buf->pts, len, pthis->frame_ct);
   } else if (msg->eos) {
     pthis->is_eos = TRUE;
   }
