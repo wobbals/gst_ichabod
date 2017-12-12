@@ -1,20 +1,22 @@
-
+//
 //  main.c
 //  gst_ichabod
 //
 //  Created by Charley Robinson on 9/10/17.
-//  Copyright © 2017 Charley Robinson. All rights reserved.
 //
 
-#include <gst/gst.h>
-#include <glib.h>
+#include <stdint.h>
+#include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <gst/gst.h>
+#include <glib.h>
 #include "gsthorsemansrc.h"
 
 struct ichabod_s {
   GstElement* pipeline;
   GstElement* asource;
+  GstElement* avalve;
   GstElement* aqueue;
   GstElement* aconv;
   GstElement* aenc;
@@ -24,7 +26,7 @@ struct ichabod_s {
   GstElement* imgdec;
   GstElement* fps;
   GstElement* venc;
-  
+
   GstElement* mux;
   GstElement* sink;
 };
@@ -88,49 +90,41 @@ bus_call (GstBus     *bus,
   return TRUE;
 }
 
-static void
-on_pad_added (GstElement *element,
-              GstPad     *pad,
-              gpointer    data)
-{
-  GstPad *sinkpad;
-  GstElement *decoder = (GstElement *) data;
-  
-  /* We can now link this pad with the vorbis-decoder sink pad */
-  g_print ("Dynamic pad created, linking demuxer/decoder\n");
-  
-  sinkpad = gst_element_get_static_pad (decoder, "sink");
-  
-  gst_pad_link (pad, sinkpad);
-  
-  gst_object_unref (sinkpad);
-}
-
 static GstPadProbeReturn on_video_live(GstPad *pad, GstPadProbeInfo *info,
                                        gpointer p_user)
 {
+  // _PASS == keep probing, _DROP == kill this probe
+  GstPadProbeReturn ret = GST_PAD_PROBE_PASS;
+  //return GST_PAD_PROBE_REMOVE;
   gboolean result;
   struct ichabod_s* pthis = p_user;
-  GstPad* apad = gst_element_get_static_pad(pthis->asource, "src");
-  if (!pad) {
-    return GST_PAD_PROBE_OK;
-  }
-  result = gst_pad_is_active(apad);
-  if (!result) {
-    result = gst_pad_set_active(apad, TRUE);
-  }
-  if (!result) {
-    g_printerr("failed to unpause audio source pad\n");
+
+  gboolean val = FALSE;
+  g_object_get(G_OBJECT(pthis->avalve), "drop", &val, NULL);
+  if (val) {
+    g_print("undrop audio bin\n");
+    g_object_set(G_OBJECT(pthis->avalve), "drop", FALSE, NULL);
   }
   // we just need a hook for first frame received. everything can proceed
-  // as usual herein
-  return GST_PAD_PROBE_REMOVE;
+  // as usual after this.
+  return ret;
 }
 
+static GstPadProbeReturn on_video_downstream
+(GstPad *pad, GstPadProbeInfo *info, gpointer p_user)
+{
+  GstEvent* event = gst_pad_probe_info_get_event(info);
+  GstEventType type = GST_EVENT_TYPE(event);
+  if (GST_EVENT_EOS == type) {
+    // forward video eos to the rest of the pipe
+    gst_element_send_event(ichabod.pipeline, gst_event_new_eos());
+  }
+  return GST_PAD_PROBE_PASS;
+}
 static void on_interrupt(int sig) {
   if (ichabod.pipeline) {
     g_print("on_interrupt\n");
-    gst_element_send_event (ichabod.pipeline, gst_event_new_eos());
+    gst_element_send_event(ichabod.pipeline, gst_event_new_eos());
   }
 }
 
@@ -165,15 +159,18 @@ main (int   argc,
   
   /* Create gstreamer elements */
   ichabod.pipeline = gst_pipeline_new ("ichabod");
-  asource   = gst_element_factory_make("pulsesrc", "pulse-audio");
+  asource   = gst_element_factory_make("pulsesrc", "asrc-pulse");
+  ichabod.avalve = gst_element_factory_make("valve", "avalve");
   ichabod.aqueue = gst_element_factory_make("queue", "aqueue");
   aconv     = gst_element_factory_make ("audioconvert", "audio-converter");
   aenc      = gst_element_factory_make ("faac", "faaaaac");
+
   vsource   = gst_element_factory_make ("horsemansrc", "horseman");
   ichabod.vqueue = gst_element_factory_make("queue", "vqueue");
   fps       = gst_element_factory_make ("videorate", "constant-fps");
   imgdec    = gst_element_factory_make ("jpegdec", "jpeg-decoder");
   venc      = gst_element_factory_make ("x264enc", "H.264 encoder");
+
   mux       = gst_element_factory_make ("mp4mux", "mymux");
   sink      = gst_element_factory_make ("filesink", "fsink");
   
@@ -190,6 +187,7 @@ main (int   argc,
   
   if (!asource || !ichabod.aqueue || !aconv || !aenc) {
     g_printerr("Audio components could not be created. Check gst install.\n");
+    return -1;
   }
   
   ichabod.asource = asource;
@@ -216,6 +214,16 @@ main (int   argc,
                     GST_PAD_PROBE_TYPE_BUFFER,
                     on_video_live,
                     &ichabod, NULL);
+  gst_pad_add_probe(vsrc_pad,
+                    GST_PAD_PROBE_TYPE_BLOCK |
+                    GST_PAD_PROBE_TYPE_SCHEDULING |
+                    GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM,
+                    on_video_downstream,
+                    &ichabod, NULL);
+  // configure multiplexer
+  //g_signal_connect (ichabod.mux, "pad-added",
+  //                  G_CALLBACK (pad_added_handler), &ichabod);
+  g_object_set(G_OBJECT(mux), "faststart", TRUE, NULL);
   
   // configure output sink
   g_object_set (G_OBJECT (sink), "location", "output.mp4", NULL);
@@ -227,11 +235,15 @@ main (int   argc,
   g_object_set(G_OBJECT(venc), "profile", 1, NULL);
   g_object_set(G_OBJECT(venc), "qp-min", 18, NULL);
   g_object_set(G_OBJECT(venc), "qp-max", 22, NULL);
-  
+  g_object_set(G_OBJECT(venc), "bitrate", 2048, NULL);
+
   // configure constant fps filter
   g_object_set (G_OBJECT (fps), "max-rate", 30, NULL);
   g_object_set (G_OBJECT (fps), "silent", FALSE, NULL);
-  g_object_set (G_OBJECT (fps), "skip-to-first", TRUE, NULL);
+  //g_object_set (G_OBJECT (fps), "skip-to-first", TRUE, NULL);
+
+  // start with audio flow blocked
+  g_object_set(G_OBJECT(ichabod.avalve), "drop", TRUE, NULL);
   
   /* we add a message handler */
   bus = gst_pipeline_get_bus(GST_PIPELINE(ichabod.pipeline));
@@ -241,23 +253,30 @@ main (int   argc,
   // add all elements into the pipeline
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
                    vsource, ichabod.vqueue,
-                   fps, imgdec, venc, mux, sink, NULL);
+                   fps,
+                   imgdec, venc,
+                   mux, sink,
+                   NULL);
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
-                   asource, ichabod.aqueue, aconv, aenc, NULL);
+                   asource,
+                   ichabod.avalve,
+                   ichabod.aqueue,
+                   aconv, aenc, NULL);
 
   // link the elements together
   result = gst_element_link_many(vsource, ichabod.vqueue,
-                                 fps, imgdec, venc, mux, sink,
+                                 fps,
+                                 imgdec, venc,
+                                 mux, sink,
                                  NULL);
-  result = gst_element_link_many(asource, ichabod.aqueue,
+  result = gst_element_link_many(asource,
+                                 ichabod.avalve,
+                                 ichabod.aqueue,
                                  aconv, aenc, mux, NULL);
   
   /* Set the pipeline to "playing" state */
   gst_element_set_state (ichabod.pipeline, GST_STATE_PLAYING);
 
-  // halt audio pad until after we've got a video frame.
-  GstPad* apad = gst_element_get_static_pad(asource, "src");
-  result = gst_pad_set_active(apad, FALSE);
   if (!result) {
     g_printerr("failed to pause audio source pad\n");
   }

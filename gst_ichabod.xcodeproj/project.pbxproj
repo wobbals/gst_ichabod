@@ -7,13 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D40EE2971FE057320039FA82 /* libgstbase-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D40EE2951FE0571C0039FA82 /* libgstbase-1.0.0.dylib */; };
+		D40EE29A1FE05AD30039FA82 /* ichabod_bin.c in Sources */ = {isa = PBXBuildFile; fileRef = D40EE2991FE05AD30039FA82 /* ichabod_bin.c */; };
 		D42E5A6B1F65705700C89691 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = D42E5A6A1F65705700C89691 /* main.c */; };
 		D42E5A741F65735400C89691 /* libgstcoreelements.so in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A721F65735400C89691 /* libgstcoreelements.so */; };
 		D42E5A751F65735400C89691 /* libgstcoretracers.so in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A731F65735400C89691 /* libgstcoretracers.so */; };
 		D42E5A7E1F65737E00C89691 /* libglib-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A791F65737E00C89691 /* libglib-2.0.0.dylib */; };
 		D42E5A7F1F65737E00C89691 /* libgmodule-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7A1F65737E00C89691 /* libgmodule-2.0.0.dylib */; };
 		D42E5A801F65737E00C89691 /* libgobject-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7B1F65737E00C89691 /* libgobject-2.0.0.dylib */; };
-		D42E5A811F65737E00C89691 /* libgstbase-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7C1F65737E00C89691 /* libgstbase-1.0.0.dylib */; };
 		D42E5A821F65737E00C89691 /* libgstreamer-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */; };
 		D4888C621FB61B9F00BD43F7 /* libogg.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */; };
 		D4C894781FD602AA00485CA5 /* horseman.c in Sources */ = {isa = PBXBuildFile; fileRef = D4C894761FD602AA00485CA5 /* horseman.c */; };
@@ -36,6 +37,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D40EE2951FE0571C0039FA82 /* libgstbase-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstbase-1.0.0.dylib"; path = "../../../../usr/local/lib/libgstbase-1.0.0.dylib"; sourceTree = "<group>"; };
+		D40EE2981FE05AD30039FA82 /* ichabod_bin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ichabod_bin.h; sourceTree = "<group>"; };
+		D40EE2991FE05AD30039FA82 /* ichabod_bin.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ichabod_bin.c; sourceTree = "<group>"; };
 		D42E5A671F65705700C89691 /* gst_ichabod */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gst_ichabod; sourceTree = BUILT_PRODUCTS_DIR; };
 		D42E5A6A1F65705700C89691 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		D42E5A721F65735400C89691 /* libgstcoreelements.so */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.bundle"; name = libgstcoreelements.so; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/gstreamer-1.0/libgstcoreelements.so"; sourceTree = "<group>"; };
@@ -68,7 +72,7 @@
 				D42E5A7E1F65737E00C89691 /* libglib-2.0.0.dylib in Frameworks */,
 				D42E5A7F1F65737E00C89691 /* libgmodule-2.0.0.dylib in Frameworks */,
 				D42E5A801F65737E00C89691 /* libgobject-2.0.0.dylib in Frameworks */,
-				D42E5A811F65737E00C89691 /* libgstbase-1.0.0.dylib in Frameworks */,
+				D40EE2971FE057320039FA82 /* libgstbase-1.0.0.dylib in Frameworks */,
 				D42E5A821F65737E00C89691 /* libgstreamer-1.0.0.dylib in Frameworks */,
 				D42E5A741F65735400C89691 /* libgstcoreelements.so in Frameworks */,
 				D42E5A751F65735400C89691 /* libgstcoretracers.so in Frameworks */,
@@ -105,6 +109,8 @@
 				D4C894841FD7225700485CA5 /* gsthorsemansrc.h */,
 				D4C894831FD7225700485CA5 /* gsthorsemansrc.c */,
 				D42E5A6A1F65705700C89691 /* main.c */,
+				D40EE2981FE05AD30039FA82 /* ichabod_bin.h */,
+				D40EE2991FE05AD30039FA82 /* ichabod_bin.c */,
 			);
 			path = gst_ichabod;
 			sourceTree = "<group>";
@@ -112,6 +118,7 @@
 		D42E5A711F65735400C89691 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D40EE2951FE0571C0039FA82 /* libgstbase-1.0.0.dylib */,
 				D4C8947E1FD6038800485CA5 /* libuv.1.dylib */,
 				D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */,
 				D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */,
@@ -196,6 +203,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */,
+				D40EE29A1FE05AD30039FA82 /* ichabod_bin.c in Sources */,
 				D4C894781FD602AA00485CA5 /* horseman.c in Sources */,
 				D4ECAE7D1FD89794006A31C5 /* base64.c in Sources */,
 				D42E5A6B1F65705700C89691 /* main.c in Sources */,
@@ -305,8 +313,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
+					/usr/local/lib,
 					/usr/local/Cellar/glib/2.52.3/lib,
-					/usr/local/Cellar/gstreamer/1.12.2/lib,
+					"/usr/local/lib/gstreamer-1.0",
 					/usr/local/Cellar/libogg/1.3.2/lib,
 					/usr/local/Cellar/zeromq/4.2.2/lib,
 					/usr/local/Cellar/libuv/1.13.1/lib,
@@ -326,8 +335,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
+					/usr/local/lib,
 					/usr/local/Cellar/glib/2.52.3/lib,
-					/usr/local/Cellar/gstreamer/1.12.2/lib,
+					"/usr/local/lib/gstreamer-1.0",
 					/usr/local/Cellar/libogg/1.3.2/lib,
 					/usr/local/Cellar/zeromq/4.2.2/lib,
 					/usr/local/Cellar/libuv/1.13.1/lib,

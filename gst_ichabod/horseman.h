@@ -8,9 +8,6 @@
 #ifndef horseman_h
 #define horseman_h
 
-#include <libavformat/avformat.h>
-#include <libavutil/frame.h>
-
 /**
  * Message broker between this process and the horseman, via ZMQ.
  */

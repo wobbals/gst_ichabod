@@ -33,6 +33,7 @@ struct _GstHorsemanSrc {
   gboolean flushing;
   gboolean is_eos;
   uint64_t frame_ct;
+  int64_t first_ts_millis;
 };
 
 struct _GstHorsemanSrcClass

@@ -1,4 +1,12 @@
+//
+//  gsthorsemansrc.c
+//  gst_ichabod
+//
+//  Created by Charley Robinson on 9/10/17.
+//
 
+#include <stdint.h>
+#include <string.h>
 #include <gst/gst.h>
 #include "gsthorsemansrc.h"
 #include "base64.h"
@@ -8,7 +16,7 @@ enum {
   LAST_SIGNAL
 };
 
-static guint gst_horsemansrc_signals[LAST_SIGNAL] = { 0 };
+static guint gst_horsemansrc_signals[LAST_SIGNAL] = { };
 
 /* GObject */
 static void gst_horsemansrc_get_property
@@ -63,7 +71,9 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   (element_class,
    gst_pad_template_new
    ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
-    gst_caps_new_empty_simple("image/jpeg")));
+    gst_caps_new_simple("image/jpeg",
+                        "framerate", GST_TYPE_FRACTION, 0, 1,
+                        NULL)));
   
   gst_element_class_set_static_metadata
   (element_class,
@@ -193,9 +203,9 @@ static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event) {
 #pragma mark - Push Source Class Methods
 static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
 {
-  g_print("ghorse: pushsrc.create\n");
   GstFlowReturn ret;
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(src);
+  g_print("ghorse: pushsrc.create\n");
   g_mutex_lock(&pthis->mutex);
   while (g_queue_is_empty(pthis->frame_queue) &&
          !pthis->flushing &&
@@ -214,6 +224,7 @@ static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
     ret = GST_FLOW_EOS;
   }
   g_mutex_unlock(&pthis->mutex);
+
   g_print("ghorse: create ret %d\n", ret);
   return ret;
 }
@@ -237,18 +248,19 @@ void on_horseman_cb(struct horseman_s* queue,
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(p);
   GstElement* element = GST_ELEMENT(p);
   GstBuffer* buf = NULL;
-  
+  if (!pthis->first_ts_millis && msg->timestamp) {
+    pthis->first_ts_millis = msg->timestamp;
+  }
   if (!msg->eos) {
     buf = wrap_message(msg);
-    // TODO: How does this clock mechanism work?
-    //GstClockTime base_time = gst_element_get_base_time(element);
-    buf->pts = msg->timestamp;
-//    GstClock* clock = gst_element_get_clock(element);
-//    GstClockTime base_time =
-//    gst_element_get_base_time(element);
-//    GstClockTime current_time = gst_clock_get_time(clock);
-//    buf->pts = fmax(0, current_time - base_time);
-    buf->dts = buf->pts;
+
+    // attempt to present timestamp in gst nano time
+    int64_t this_ts = msg->timestamp;
+    this_ts -= pthis->first_ts_millis;
+    this_ts *= 1000000; // milli to nano
+    buf->pts = this_ts;
+    buf->dts = GST_CLOCK_TIME_NONE;
+    buf->duration = GST_CLOCK_TIME_NONE;
   }
   
   g_mutex_lock(&pthis->mutex);
