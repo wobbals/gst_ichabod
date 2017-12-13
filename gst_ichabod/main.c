@@ -116,7 +116,7 @@ static GstPadProbeReturn on_video_downstream
   GstEvent* event = gst_pad_probe_info_get_event(info);
   GstEventType type = GST_EVENT_TYPE(event);
   if (GST_EVENT_EOS == type) {
-    // forward video eos to the rest of the pipe
+    // forward video eos to the rest of the pipeline
     gst_element_send_event(ichabod.pipeline, gst_event_new_eos());
   }
   return GST_PAD_PROBE_PASS;
@@ -153,7 +153,8 @@ main (int   argc,
                              horsemansrc_init,
                              "0.0.1",
                              "LGPL",
-                             "testsrc", "testsrc", "https://");
+                             "testsrc", "testsrc",
+                             "https://");
   
   loop = g_main_loop_new (NULL, FALSE);
   
@@ -172,7 +173,7 @@ main (int   argc,
   venc      = gst_element_factory_make ("x264enc", "H.264 encoder");
 
   mux       = gst_element_factory_make ("mp4mux", "mymux");
-  sink      = gst_element_factory_make ("filesink", "fsink");
+  sink      = gst_element_factory_make ("filesink", "psink");
   
   if (!ichabod.pipeline) {
     g_printerr("pipeline alloc failure.\n");
@@ -220,14 +221,17 @@ main (int   argc,
                     GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM,
                     on_video_downstream,
                     &ichabod, NULL);
+
   // configure multiplexer
   //g_signal_connect (ichabod.mux, "pad-added",
   //                  G_CALLBACK (pad_added_handler), &ichabod);
-  g_object_set(G_OBJECT(mux), "faststart", TRUE, NULL);
-  
+  //g_object_set(G_OBJECT(mux), "faststart", TRUE, NULL);
+  //g_object_set(G_OBJECT(mux), "streamable", TRUE, NULL);
+
   // configure output sink
   g_object_set (G_OBJECT (sink), "location", "output.mp4", NULL);
-  
+  //g_object_set (G_OBJECT (sink), "location", "rtmp://live.twitch.tv/app/live_21055454_n6gJbuqUJCljbObVyniX5VINKw3r0o", NULL);
+
   // configure video encoder
   // TODO: ultrafast not accessible by string? I'm doing something wrong here.
   g_object_set(G_OBJECT(venc), "speed-preset", 0, NULL);
@@ -253,7 +257,7 @@ main (int   argc,
   // add all elements into the pipeline
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
                    vsource, ichabod.vqueue,
-                   fps,
+                   //fps,
                    imgdec, venc,
                    mux, sink,
                    NULL);
@@ -265,15 +269,16 @@ main (int   argc,
 
   // link the elements together
   result = gst_element_link_many(vsource, ichabod.vqueue,
-                                 fps,
+                                 //fps,
                                  imgdec, venc,
-                                 mux, sink,
+                                 mux,
+                                 sink,
                                  NULL);
   result = gst_element_link_many(asource,
                                  ichabod.avalve,
                                  ichabod.aqueue,
                                  aconv, aenc, mux, NULL);
-  
+
   /* Set the pipeline to "playing" state */
   gst_element_set_state (ichabod.pipeline, GST_STATE_PLAYING);
 

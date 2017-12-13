@@ -7,8 +7,11 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
+#include <math.h>
 #include <gst/gst.h>
 #include "gsthorsemansrc.h"
+#include "wallclock.h"
 #include "base64.h"
 
 enum {
@@ -25,6 +28,12 @@ static void gst_horsemansrc_set_property
 (GObject * object, guint prop_id, const GValue * value, GParamSpec * pspec);
 static void gst_horsemansrc_finalize(GObject *object);
 
+/* GstElement */
+static GstStateChangeReturn gst_horsemansrc_change_state
+(GstElement * element, GstStateChange transition);
+static GstClock* gst_horsemansrc_provide_clock(GstElement* element);
+static gboolean gst_horsemansrc_set_clock(GstElement* element, GstClock* clock);
+
 /* GstBaseSrc */
 static gboolean gst_horsemansrc_start (GstBaseSrc *src);
 static gboolean gst_horsemansrc_stop (GstBaseSrc *src);
@@ -35,10 +44,6 @@ static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event);
 /* GstPushSrc */
 static GstFlowReturn
 gst_horsemansrc_create (GstPushSrc * src, GstBuffer ** buf);
-
-/* GstElement */
-static GstStateChangeReturn gst_horsemansrc_change_state
-(GstElement * element, GstStateChange transition);
 
 /* Horseman */
 void on_horseman_cb(struct horseman_s* queue,
@@ -66,7 +71,10 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   gobject_class->get_property = gst_horsemansrc_get_property;
   
   element_class->change_state = gst_horsemansrc_change_state;
-  
+  // is this really necessary?
+  element_class->provide_clock = gst_horsemansrc_provide_clock;
+  element_class->set_clock = gst_horsemansrc_set_clock;
+
   gst_element_class_add_pad_template
   (element_class,
    gst_pad_template_new
@@ -86,9 +94,10 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   basesrc_class->stop = gst_horsemansrc_stop;
   basesrc_class->unlock = gst_horsemansrc_unlock;
   basesrc_class->unlock_stop = gst_horsemansrc_unlock_stop;
-  
+  basesrc_class->event = gst_horsemansrc_event;
+
   pushsrc_class->create = gst_horsemansrc_create;
-  
+
 }
 
 /* initialize the new element
@@ -99,9 +108,14 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
 static void
 gst_horsemansrc_init (GstHorsemanSrc* pthis)
 {
+  GST_OBJECT_FLAG_SET(pthis, GST_ELEMENT_FLAG_PROVIDE_CLOCK);
+  GST_OBJECT_FLAG_SET(pthis, GST_ELEMENT_FLAG_SOURCE);
+
   gst_base_src_set_format (GST_BASE_SRC (pthis), GST_FORMAT_TIME);
   gst_base_src_set_live (GST_BASE_SRC (pthis), TRUE);
-  
+
+  pthis->walltime_clock = gst_wall_clock_new();
+
   struct horseman_config_s hconf;
   horseman_alloc(&pthis->horseman);
   hconf.p = pthis;
@@ -148,15 +162,43 @@ static void gst_horsemansrc_finalize(GObject *object) {
 #pragma mark - GstElement Class Methods
 
 static GstStateChangeReturn gst_horsemansrc_change_state
-(GstElement * element, GstStateChange transition)
+(GstElement* element, GstStateChange transition)
 {
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(element);
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
   g_print("ghorse: state: %d\n", transition);
-  
+
+  if (GST_STATE_CHANGE_PAUSED_TO_PLAYING == transition) {
+    // what time is it?
+  }
+
   // pass state change to parent element
   ret = GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
   
   return ret;
+}
+
+static GstClock* gst_horsemansrc_provide_clock(GstElement* element) {
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(element);
+  return gst_object_ref(pthis->walltime_clock);
+}
+
+static gboolean gst_horsemansrc_set_clock(GstElement* element, GstClock* clock)
+{
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(element);
+  gboolean result;
+  if (clock && clock != pthis->walltime_clock) {
+    result = gst_clock_set_master(pthis->walltime_clock, clock);
+    g_print("slaving clock %s to master %s (ret=%d)\n",
+            gst_object_get_name(GST_OBJECT(pthis->walltime_clock)),
+            gst_object_get_name(GST_OBJECT(clock)),
+            result);
+//    result = gst_clock_wait_for_sync(pthis->walltime_clock,
+//                                     5000000000);
+//    g_print("slave clock sync = %d\n", result);
+  }
+  result = GST_ELEMENT_CLASS(parent_class)->set_clock(element, clock);
+  return result;
 }
 
 #pragma mark - Base Source Class Methods
@@ -164,6 +206,7 @@ static gboolean gst_horsemansrc_start(GstBaseSrc* base) {
   g_print("ghorse: start\n");
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
   pthis->is_eos = FALSE;
+  //gst_message_new_clock_provide(GST_OBJECT(base), pthis->walltime_clock, TRUE);
   return (0 == horseman_start(pthis->horseman));
 }
 
@@ -237,7 +280,7 @@ static GstBuffer* wrap_message(struct horseman_msg_s* msg) {
   base64_decode((const unsigned char*)msg->sz_data,
                 strlen(msg->sz_data),
                 &b_length);
-  GstBuffer* buf = gst_buffer_new_wrapped(b_img, b_length);
+  GstBuffer* buf = gst_buffer_new_wrapped((gpointer)b_img, b_length);
   return buf;
 }
 
@@ -246,35 +289,55 @@ void on_horseman_cb(struct horseman_s* queue,
                     void* p)
 {
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(p);
-  GstElement* element = GST_ELEMENT(p);
   GstBuffer* buf = NULL;
-  if (!pthis->first_ts_millis && msg->timestamp) {
-    pthis->first_ts_millis = msg->timestamp;
+
+  g_mutex_lock(&pthis->mutex);
+  if (msg->eos) {
+    pthis->is_eos = TRUE;
+    g_cond_broadcast(&pthis->data_ready);
   }
+  pthis->frame_ct++;
+  g_mutex_unlock(&pthis->mutex);
+
+  GstClock* active_clock = gst_element_get_clock(GST_ELEMENT(pthis));
+  if (!active_clock) {
+    g_print("ghorse: received frame, but pipeline is not up. what do?\n");
+    return;
+  }
+
+  GstClockTime internal, external, rate_n, rate_d;
+  gst_clock_get_calibration(pthis->walltime_clock,
+                            &internal, &external, &rate_n, &rate_d);
+  g_print("ghorse: wallclock calibration %lu, %lu, %lu / %lu\n",
+          internal, external, rate_n, rate_d);
+  if (!internal || !external) {
+    g_print("ghorse: calibration looks invalid. skipping frame\n");
+    return;
+  }
+
   if (!msg->eos) {
     buf = wrap_message(msg);
-
-    // attempt to present timestamp in gst nano time
-    int64_t this_ts = msg->timestamp;
-    this_ts -= pthis->first_ts_millis;
-    this_ts *= 1000000; // milli to nano
-    buf->pts = this_ts;
+//    GstClockTime timstamp_nano = msg->timestamp * 1000000;
+//    GST_OBJECT_LOCK(pthis->walltime_clock);
+//    GstClockTime adjusted_pts =
+//    gst_clock_adjust_unlocked(pthis->walltime_clock, timstamp_nano);
+//    GST_OBJECT_UNLOCK(pthis->walltime_clock);
+    GstClockTime adjusted_pts = gst_clock_get_time(pthis->walltime_clock);
+    buf->pts = adjusted_pts;
     buf->dts = GST_CLOCK_TIME_NONE;
     buf->duration = GST_CLOCK_TIME_NONE;
   }
   
-  g_mutex_lock(&pthis->mutex);
-  pthis->frame_ct++;
   if (buf) {
+    g_mutex_lock(&pthis->mutex);
     g_queue_push_tail(pthis->frame_queue, buf);
     size_t len = g_queue_get_length(pthis->frame_queue);
-    g_print("queue push pts %llu n=%d tot=%llu\n",
-            buf->pts, len, pthis->frame_ct);
-  } else if (msg->eos) {
-    pthis->is_eos = TRUE;
+    g_cond_broadcast(&pthis->data_ready);
+    g_mutex_unlock(&pthis->mutex);
+    g_print("queue push pts %lu (from %.00f) n=%ld tot=%llu\n",
+            buf->pts, msg->timestamp,
+            len, pthis->frame_ct);
   }
-  g_cond_broadcast(&pthis->data_ready);
-  g_mutex_unlock(&pthis->mutex);
 }
 
 #pragma mark GStreamer plugin registration
