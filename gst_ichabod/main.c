@@ -12,6 +12,7 @@
 #include <gst/gst.h>
 #include <glib.h>
 #include "gsthorsemansrc.h"
+#include "wallclock.h"
 
 struct ichabod_s {
   GstElement* pipeline;
@@ -121,6 +122,7 @@ static GstPadProbeReturn on_video_downstream
   }
   return GST_PAD_PROBE_PASS;
 }
+
 static void on_interrupt(int sig) {
   if (ichabod.pipeline) {
     g_print("on_interrupt\n");
@@ -257,7 +259,7 @@ main (int   argc,
   // add all elements into the pipeline
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
                    vsource, ichabod.vqueue,
-                   //fps,
+                   fps,
                    imgdec, venc,
                    mux, sink,
                    NULL);
@@ -269,7 +271,7 @@ main (int   argc,
 
   // link the elements together
   result = gst_element_link_many(vsource, ichabod.vqueue,
-                                 //fps,
+                                 fps,
                                  imgdec, venc,
                                  mux,
                                  sink,

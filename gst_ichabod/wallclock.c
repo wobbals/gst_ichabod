@@ -48,17 +48,21 @@ G_DEFINE_TYPE_WITH_CODE (GstWallClock, gst_wall_clock,
                          GST_TYPE_SYSTEM_CLOCK, DEBUG_INIT);
 
 static void gst_wall_clock_finalize (GObject * object);
-static GstClockTime gst_wall_clock_get_internal_time (GstClock * clock);
+static GstClockTime gst_wall_clock_get_internal_time(GstClock* clock);
+static guint64 gst_wall_clock_get_resolution(GstClock* clock);
 
 static void gst_wall_clock_class_init(GstWallClockClass* klass)
 {
-  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  GstClockClass *clock_class = GST_CLOCK_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+  GstClockClass *clock_class = GST_CLOCK_CLASS(klass);
 
   gobject_class->finalize = gst_wall_clock_finalize;
 
   clock_class->get_internal_time =
-  GST_DEBUG_FUNCPTR (gst_wall_clock_get_internal_time);
+  GST_DEBUG_FUNCPTR(gst_wall_clock_get_internal_time);
+
+  clock_class->get_resolution =
+  GST_DEBUG_FUNCPTR(gst_wall_clock_get_resolution);
 }
 
 static void gst_wall_clock_init(GstWallClock* clock)
@@ -82,6 +86,35 @@ static GstClockTime gst_wall_clock_get_internal_time(GstClock* clock)
   epochtime += spec.tv_nsec; // add remaining nanos
   return epochtime;
 }
+
+static guint64 gst_wall_clock_get_resolution(GstClock* clock)
+{
+  clockid_t ptype = CLOCK_REALTIME;
+  struct timespec ts;
+  if (G_UNLIKELY(clock_getres(ptype, &ts))) {
+    return GST_CLOCK_TIME_NONE;
+  }
+  return GST_TIMESPEC_TO_TIME(ts);
+}
+
+GstClockTime gst_wall_clock_adjust_safe
+(GstClock* clock, GstClockTime internal)
+{
+  GstClockTime ret, cinternal, cexternal, cnum, cdenom;
+  gst_clock_get_calibration(clock, &cinternal, &cexternal, &cnum, &cdenom);
+  ret = gst_clock_adjust_with_calibration
+  (clock, internal, cinternal, cexternal,cnum, cdenom);
+  return ret;
+}
+
+void gst_wall_clock_do_bootleg_calibration(GstClock* clock, GstClock* master)
+{
+  GstClockTime internal = gst_clock_get_internal_time(clock);
+  GstClockTime external = gst_clock_get_time(master);
+  // just assume the clocks run at the same speed
+  gst_clock_set_calibration(clock, internal, external, 1, 1);
+}
+
 
 GstClock* gst_wall_clock_new()
 {

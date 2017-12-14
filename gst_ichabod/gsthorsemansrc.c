@@ -164,7 +164,6 @@ static void gst_horsemansrc_finalize(GObject *object) {
 static GstStateChangeReturn gst_horsemansrc_change_state
 (GstElement* element, GstStateChange transition)
 {
-  GstHorsemanSrc* pthis = GST_HORSEMANSRC(element);
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
   g_print("ghorse: state: %d\n", transition);
 
@@ -183,19 +182,53 @@ static GstClock* gst_horsemansrc_provide_clock(GstElement* element) {
   return gst_object_ref(pthis->walltime_clock);
 }
 
+static gboolean master_synchronize_cb(GstClock* clock,
+                                      GstClockTime time,
+                                      GstClockID id,
+                                      gpointer p_user)
+{
+  g_print("ghorse: master calibration callback\n");
+  // this represents how much time we expect for the internal clock to sync.
+  gst_clock_id_unref(id);
+  return TRUE;
+}
+
 static gboolean gst_horsemansrc_set_clock(GstElement* element, GstClock* clock)
 {
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(element);
   gboolean result;
   if (clock && clock != pthis->walltime_clock) {
-    result = gst_clock_set_master(pthis->walltime_clock, clock);
+    GstClock* master = clock;
+    GstClock* slave = pthis->walltime_clock;
+    result = gst_clock_set_master(slave, master);
     g_print("slaving clock %s to master %s (ret=%d)\n",
-            gst_object_get_name(GST_OBJECT(pthis->walltime_clock)),
-            gst_object_get_name(GST_OBJECT(clock)),
+            gst_object_get_name(GST_OBJECT(slave)),
+            gst_object_get_name(GST_OBJECT(master)),
             result);
-//    result = gst_clock_wait_for_sync(pthis->walltime_clock,
-//                                     5000000000);
-//    g_print("slave clock sync = %d\n", result);
+
+    // one-shot calibration attempt to get things started immediately
+    gst_wall_clock_do_bootleg_calibration(pthis->walltime_clock, master);
+
+    GstClockTime timeout = gst_clock_get_timeout(slave);
+    gint window_size;
+    g_object_get(G_OBJECT(slave), "window-size", &window_size, NULL);
+    gint window_threshold;
+    g_object_get(G_OBJECT(slave), "window-threshold", &window_threshold, NULL);
+    g_print("master clock is_sync=%d\n", gst_clock_is_synced(clock));
+    g_print("slave clock timeout=%ld\n", timeout);
+    g_print("slave clock window_size=%d\n", window_size);
+    g_print("slave clock window_thresh=%d\n", window_threshold);
+    timeout *= window_size;
+    GstClockID await_id =
+    gst_clock_new_single_shot_id(master, gst_clock_get_time(master) + timeout);
+    GstClockReturn ret =
+    gst_clock_id_wait_async(await_id, master_synchronize_cb, pthis, NULL);
+    g_print("slave clock async wait for calibration ret=%d\n", ret);
+    g_mutex_lock(&pthis->mutex);
+    if (GST_CLOCK_OK != ret) {
+      gst_clock_id_unref(await_id);
+    }
+    g_mutex_unlock(&pthis->mutex);
   }
   result = GST_ELEMENT_CLASS(parent_class)->set_clock(element, clock);
   return result;
@@ -239,7 +272,7 @@ static gboolean gst_horsemansrc_unlock_stop(GstBaseSrc* base)
 }
 
 static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event) {
-  g_print("ghorse event: %s\n", gst_event_type_get_name(gst_event_get_type()));
+  g_print("ghorse event: %s\n", gst_event_type_get_name(event->type));
   return GST_BASE_SRC_CLASS (parent_class)->event (src, event);
 }
 
@@ -301,7 +334,7 @@ void on_horseman_cb(struct horseman_s* queue,
 
   GstClock* active_clock = gst_element_get_clock(GST_ELEMENT(pthis));
   if (!active_clock) {
-    g_print("ghorse: received frame, but pipeline is not up. what do?\n");
+    g_print("ghorse: received frame, but element has no clock. what do?\n");
     return;
   }
 
@@ -310,28 +343,28 @@ void on_horseman_cb(struct horseman_s* queue,
                             &internal, &external, &rate_n, &rate_d);
   g_print("ghorse: wallclock calibration %lu, %lu, %lu / %lu\n",
           internal, external, rate_n, rate_d);
-  if (!internal || !external) {
-    g_print("ghorse: calibration looks invalid. skipping frame\n");
-    return;
-  }
+//  if (!internal || !external) {
+//    // TODO: We should save these buffers and readjust them once calibration is
+//    // available.
+//    g_print("ghorse: calibration looks invalid. deferring frame\n");
+//    waiting_for_calibration = TRUE;
+//  }
 
   if (!msg->eos) {
     buf = wrap_message(msg);
-//    GstClockTime timstamp_nano = msg->timestamp * 1000000;
-//    GST_OBJECT_LOCK(pthis->walltime_clock);
-//    GstClockTime adjusted_pts =
-//    gst_clock_adjust_unlocked(pthis->walltime_clock, timstamp_nano);
-//    GST_OBJECT_UNLOCK(pthis->walltime_clock);
-    GstClockTime adjusted_pts = gst_clock_get_time(pthis->walltime_clock);
-    buf->pts = adjusted_pts;
+    GstClockTime timestamp_nano = msg->timestamp * GST_MSECOND;
+    GstClockTime adjusted_pts =
+    gst_wall_clock_adjust_safe(pthis->walltime_clock, timestamp_nano);
+    buf->pts =  adjusted_pts;
     buf->dts = GST_CLOCK_TIME_NONE;
     buf->duration = GST_CLOCK_TIME_NONE;
   }
-  
+
   if (buf) {
     g_mutex_lock(&pthis->mutex);
-    g_queue_push_tail(pthis->frame_queue, buf);
-    size_t len = g_queue_get_length(pthis->frame_queue);
+    GQueue* queue = pthis->frame_queue;
+    g_queue_push_tail(queue, buf);
+    size_t len = g_queue_get_length(queue);
     g_cond_broadcast(&pthis->data_ready);
     g_mutex_unlock(&pthis->mutex);
     g_print("queue push pts %lu (from %.00f) n=%ld tot=%llu\n",
