@@ -206,8 +206,11 @@ static gboolean gst_horsemansrc_set_clock(GstElement* element, GstClock* clock)
             gst_object_get_name(GST_OBJECT(master)),
             result);
 
-    // one-shot calibration attempt to get things started immediately
-    gst_wall_clock_do_bootleg_calibration(pthis->walltime_clock, master);
+    // one-shot calibration bootleg to get things started immediately
+    GstClockTime internal = gst_clock_get_internal_time(slave);
+    GstClockTime external = gst_clock_get_time(master);
+    // just assume the clocks run at the same speed for now
+    gst_clock_set_calibration(slave, internal, external, 1, 1);
 
     GstClockTime timeout = gst_clock_get_timeout(slave);
     gint window_size;
@@ -273,6 +276,17 @@ static gboolean gst_horsemansrc_unlock_stop(GstBaseSrc* base)
 
 static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event) {
   g_print("ghorse event: %s\n", gst_event_type_get_name(event->type));
+  switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_LATENCY:
+    {
+      GstClockTime latency = GST_CLOCK_TIME_NONE;
+      gst_event_parse_latency(event, &latency);
+      g_print("latency is %ld\n", latency);
+      break;
+    }
+    default:
+      break;
+  }
   return GST_BASE_SRC_CLASS (parent_class)->event (src, event);
 }
 

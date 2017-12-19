@@ -107,15 +107,6 @@ GstClockTime gst_wall_clock_adjust_safe
   return ret;
 }
 
-void gst_wall_clock_do_bootleg_calibration(GstClock* clock, GstClock* master)
-{
-  GstClockTime internal = gst_clock_get_internal_time(clock);
-  GstClockTime external = gst_clock_get_time(master);
-  // just assume the clocks run at the same speed
-  gst_clock_set_calibration(clock, internal, external, 1, 1);
-}
-
-
 GstClock* gst_wall_clock_new()
 {
   return

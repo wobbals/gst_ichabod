@@ -20,9 +20,11 @@ struct ichabod_s {
   GstElement* avalve;
   GstElement* aqueue;
   GstElement* aconv;
+  GstElement* afps;
   GstElement* aenc;
   
   GstElement* vsource;
+  GstElement* vvalve;
   GstElement* vqueue;
   GstElement* imgdec;
   GstElement* fps;
@@ -30,6 +32,11 @@ struct ichabod_s {
 
   GstElement* mux;
   GstElement* sink;
+
+  GMutex lock;
+  gboolean audio_ready;
+  gboolean video_ready;
+  gboolean pipe_open_requested;
 };
 // static instance for interrupt handler.
 // move this out once signals are properly handled.
@@ -75,7 +82,13 @@ bus_call (GstBus     *bus,
       g_print("Stream %s: Status = %d\n", name, type);
       break;
     }
-      
+
+    case GST_MESSAGE_LATENCY:
+    {
+      g_print("ichabod: latency event\n");
+      break;
+    }
+
     case GST_MESSAGE_STATE_CHANGED:
     {
       g_print("state change\n");
@@ -83,12 +96,52 @@ bus_call (GstBus     *bus,
     }
     default:
     {
-      g_print("other event\n");
+      g_print("other event (%s)\n", GST_MESSAGE_TYPE_NAME(msg));
       break;
     }
   }
   
   return TRUE;
+}
+
+static gboolean pipeline_open(GstClock* clock,
+                          GstClockTime time,
+                          GstClockID id,
+                          gpointer p_user)
+{
+  struct ichabod_s* pthis = (struct ichabod_s*) p_user;
+  g_print("ichabod: open pipeline\n");
+  g_mutex_lock(&pthis->lock);
+  if (pthis->pipe_open_requested) {
+    g_object_set(G_OBJECT(pthis->avalve), "drop", FALSE, NULL);
+    g_object_set(G_OBJECT(pthis->vvalve), "drop", FALSE, NULL);
+  }
+  g_mutex_unlock(&pthis->lock);
+  return TRUE;
+}
+
+static void request_pipeline_open_async(struct ichabod_s* pthis) {
+  GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pthis->pipeline));
+  GstClockTime time = gst_clock_get_time(clock);
+  time += GST_SECOND;
+  GstClockID await_id = gst_clock_new_single_shot_id(clock, time);
+  gst_clock_id_wait_async(await_id, pipeline_open, pthis, NULL);
+}
+
+static GstPadProbeReturn on_audio_live(GstPad *pad, GstPadProbeInfo *info,
+                                       gpointer p_user)
+{
+  GstPadProbeReturn ret = GST_PAD_PROBE_PASS;
+  struct ichabod_s* pthis = (struct ichabod_s*) p_user;
+  g_mutex_lock(&pthis->lock);
+  pthis->audio_ready = TRUE;
+  if (pthis->audio_ready && pthis->video_ready && !pthis->pipe_open_requested) {
+    request_pipeline_open_async(pthis);
+    pthis->pipe_open_requested = TRUE;
+  }
+  g_mutex_unlock(&pthis->lock);
+
+  return ret;
 }
 
 static GstPadProbeReturn on_video_live(GstPad *pad, GstPadProbeInfo *info,
@@ -97,15 +150,15 @@ static GstPadProbeReturn on_video_live(GstPad *pad, GstPadProbeInfo *info,
   // _PASS == keep probing, _DROP == kill this probe
   GstPadProbeReturn ret = GST_PAD_PROBE_PASS;
   //return GST_PAD_PROBE_REMOVE;
-  gboolean result;
   struct ichabod_s* pthis = p_user;
-
-  gboolean val = FALSE;
-  g_object_get(G_OBJECT(pthis->avalve), "drop", &val, NULL);
-  if (val) {
-    g_print("undrop audio bin\n");
-    g_object_set(G_OBJECT(pthis->avalve), "drop", FALSE, NULL);
+  g_mutex_lock(&pthis->lock);
+  pthis->video_ready = TRUE;
+  if (pthis->audio_ready && pthis->video_ready && !pthis->pipe_open_requested) {
+    request_pipeline_open_async(pthis);
+    pthis->pipe_open_requested = TRUE;
   }
+  g_mutex_unlock(&pthis->lock);
+
   // we just need a hook for first frame received. everything can proceed
   // as usual after this.
   return ret;
@@ -159,18 +212,25 @@ main (int   argc,
                              "https://");
   
   loop = g_main_loop_new (NULL, FALSE);
-  
+
+  ichabod.audio_ready = FALSE;
+  ichabod.video_ready = FALSE;
+  ichabod.pipe_open_requested = FALSE;
+  g_mutex_init(&ichabod.lock);
+
   /* Create gstreamer elements */
   ichabod.pipeline = gst_pipeline_new ("ichabod");
   asource   = gst_element_factory_make("pulsesrc", "asrc-pulse");
   ichabod.avalve = gst_element_factory_make("valve", "avalve");
   ichabod.aqueue = gst_element_factory_make("queue", "aqueue");
+  ichabod.afps = gst_element_factory_make("audiorate", "afps");
   aconv     = gst_element_factory_make ("audioconvert", "audio-converter");
   aenc      = gst_element_factory_make ("faac", "faaaaac");
 
   vsource   = gst_element_factory_make ("horsemansrc", "horseman");
+  ichabod.vvalve = gst_element_factory_make("valve", "vvalve");
   ichabod.vqueue = gst_element_factory_make("queue", "vqueue");
-  fps       = gst_element_factory_make ("videorate", "constant-fps");
+  fps       = gst_element_factory_make ("videorate", "vfps");
   imgdec    = gst_element_factory_make ("jpegdec", "jpeg-decoder");
   venc      = gst_element_factory_make ("x264enc", "H.264 encoder");
 
@@ -209,7 +269,7 @@ main (int   argc,
   // not needed as long as long as we use the default source
   //g_object_set (G_OBJECT (source), "device", "0", NULL);
   
-  // configure video source
+  // configure video source pad callbacks
   GstPad* vsrc_pad = gst_element_get_static_pad(vsource, "src");
   gst_pad_add_probe(vsrc_pad,
                     GST_PAD_PROBE_TYPE_BLOCK |
@@ -224,6 +284,16 @@ main (int   argc,
                     on_video_downstream,
                     &ichabod, NULL);
 
+  // configure audio source pad callbacks
+  GstPad* asrc_pad = gst_element_get_static_pad(asource, "src");
+  gst_pad_add_probe(asrc_pad,
+                    GST_PAD_PROBE_TYPE_BLOCK |
+                    GST_PAD_PROBE_TYPE_SCHEDULING |
+                    GST_PAD_PROBE_TYPE_BUFFER,
+                    on_audio_live,
+                    &ichabod, NULL);
+
+
   // configure multiplexer
   //g_signal_connect (ichabod.mux, "pad-added",
   //                  G_CALLBACK (pad_added_handler), &ichabod);
@@ -232,7 +302,6 @@ main (int   argc,
 
   // configure output sink
   g_object_set (G_OBJECT (sink), "location", "output.mp4", NULL);
-  //g_object_set (G_OBJECT (sink), "location", "rtmp://live.twitch.tv/app/live_21055454_n6gJbuqUJCljbObVyniX5VINKw3r0o", NULL);
 
   // configure video encoder
   // TODO: ultrafast not accessible by string? I'm doing something wrong here.
@@ -248,9 +317,20 @@ main (int   argc,
   g_object_set (G_OBJECT (fps), "silent", FALSE, NULL);
   //g_object_set (G_OBJECT (fps), "skip-to-first", TRUE, NULL);
 
-  // start with audio flow blocked
+  // configure constant audio fps filter
+  g_object_set (G_OBJECT (ichabod.afps), "silent", FALSE, NULL);
+  //g_object_set (G_OBJECT (ichabod.afps), "skip-to-first", TRUE, NULL);
+
+  g_object_set(G_OBJECT(ichabod.aqueue), "max-size-time", 5 * GST_SECOND, NULL);
+  g_object_set(G_OBJECT(ichabod.aqueue), "min-threshold-time", GST_SECOND, NULL);
+  g_object_set(G_OBJECT(ichabod.vqueue), "max-size-time", 5 * GST_SECOND, NULL);
+//  g_object_set(G_OBJECT(ichabod.vqueue), "min-threshold-time", GST_SECOND, NULL);
+
+  // start with audio and video flows blocked from encoder, to allow full
+  // pipeline pre-roll before encoding anything
   g_object_set(G_OBJECT(ichabod.avalve), "drop", TRUE, NULL);
-  
+  g_object_set(G_OBJECT(ichabod.vvalve), "drop", TRUE, NULL);
+
   /* we add a message handler */
   bus = gst_pipeline_get_bus(GST_PIPELINE(ichabod.pipeline));
   bus_watch_id = gst_bus_add_watch (bus, bus_call, loop);
@@ -258,7 +338,9 @@ main (int   argc,
   
   // add all elements into the pipeline
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
-                   vsource, ichabod.vqueue,
+                   vsource,
+                   ichabod.vvalve,
+                   ichabod.vqueue,
                    fps,
                    imgdec, venc,
                    mux, sink,
@@ -267,19 +349,32 @@ main (int   argc,
                    asource,
                    ichabod.avalve,
                    ichabod.aqueue,
+                   ichabod.afps,
                    aconv, aenc, NULL);
 
-  // link the elements together
-  result = gst_element_link_many(vsource, ichabod.vqueue,
+  // video element chain
+  result = gst_element_link_many(vsource,
+                                 ichabod.vvalve,
+                                 ichabod.vqueue,
+                                 imgdec,
                                  fps,
-                                 imgdec, venc,
-                                 mux,
-                                 sink,
+                                 venc,
                                  NULL);
+  // audio element chain
   result = gst_element_link_many(asource,
                                  ichabod.avalve,
                                  ichabod.aqueue,
-                                 aconv, aenc, mux, NULL);
+                                 aconv,
+                                 ichabod.afps,
+                                 aenc, NULL);
+
+  // multiplexer element chain
+  result = gst_element_link(venc, mux);
+  result = gst_element_link(aenc, mux);
+  result = gst_element_link(mux, ichabod.sink);
+
+  // set a high latency tolerance because reasons
+  gst_pipeline_set_latency(GST_PIPELINE(ichabod.pipeline), GST_SECOND);
 
   /* Set the pipeline to "playing" state */
   gst_element_set_state (ichabod.pipeline, GST_STATE_PLAYING);
