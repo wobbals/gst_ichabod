@@ -27,6 +27,7 @@ struct _GstHorsemanSrc {
   GstPad *srcpad;
   
   struct horseman_s* horseman;
+  gboolean horseman_started;
   GQueue* frame_queue;
   GMutex mutex;
   GCond data_ready;

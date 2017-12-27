@@ -18,6 +18,7 @@ struct ichabod_s {
   GstElement* pipeline;
   GstElement* asource;
   GstElement* avalve;
+  // TODO: below elt should almost definitely be a multiqueue alongside video
   GstElement* aqueue;
   GstElement* aconv;
   GstElement* afps;
@@ -117,13 +118,14 @@ static gboolean pipeline_open(GstClock* clock,
     g_object_set(G_OBJECT(pthis->vvalve), "drop", FALSE, NULL);
   }
   g_mutex_unlock(&pthis->lock);
+  gst_clock_id_unref(id);
   return TRUE;
 }
 
 static void request_pipeline_open_async(struct ichabod_s* pthis) {
   GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pthis->pipeline));
   GstClockTime time = gst_clock_get_time(clock);
-  time += GST_SECOND;
+  time += 50 * GST_MSECOND;
   GstClockID await_id = gst_clock_new_single_shot_id(clock, time);
   gst_clock_id_wait_async(await_id, pipeline_open, pthis, NULL);
 }
@@ -131,6 +133,7 @@ static void request_pipeline_open_async(struct ichabod_s* pthis) {
 static GstPadProbeReturn on_audio_live(GstPad *pad, GstPadProbeInfo *info,
                                        gpointer p_user)
 {
+  // do we need to check for audio levels as well? silent frames are sneaking in
   GstPadProbeReturn ret = GST_PAD_PROBE_PASS;
   struct ichabod_s* pthis = (struct ichabod_s*) p_user;
   g_mutex_lock(&pthis->lock);
@@ -235,7 +238,7 @@ main (int   argc,
   venc      = gst_element_factory_make ("x264enc", "H.264 encoder");
 
   mux       = gst_element_factory_make ("mp4mux", "mymux");
-  sink      = gst_element_factory_make ("filesink", "psink");
+  sink      = gst_element_factory_make ("filesink", "fsink");
   
   if (!ichabod.pipeline) {
     g_printerr("pipeline alloc failure.\n");
@@ -269,7 +272,7 @@ main (int   argc,
   // not needed as long as long as we use the default source
   //g_object_set (G_OBJECT (source), "device", "0", NULL);
   
-  // configure video source pad callbacks
+  // configure source pad callbacks as a preroll workaround
   GstPad* vsrc_pad = gst_element_get_static_pad(vsource, "src");
   gst_pad_add_probe(vsrc_pad,
                     GST_PAD_PROBE_TYPE_BLOCK |
@@ -284,8 +287,8 @@ main (int   argc,
                     on_video_downstream,
                     &ichabod, NULL);
 
-  // configure audio source pad callbacks
-  GstPad* asrc_pad = gst_element_get_static_pad(asource, "src");
+  // configure audio source pad callback(s)
+  GstPad* asrc_pad = gst_element_get_static_pad(ichabod.asource, "src");
   gst_pad_add_probe(asrc_pad,
                     GST_PAD_PROBE_TYPE_BLOCK |
                     GST_PAD_PROBE_TYPE_SCHEDULING |
@@ -302,12 +305,13 @@ main (int   argc,
 
   // configure output sink
   g_object_set (G_OBJECT (sink), "location", "output.mp4", NULL);
+  //g_object_set (G_OBJECT (sink), "async", FALSE, NULL);
 
   // configure video encoder
   // TODO: ultrafast not accessible by string? I'm doing something wrong here.
   g_object_set(G_OBJECT(venc), "speed-preset", 0, NULL);
   // Profile also seems ignored, while we're at it...
-  g_object_set(G_OBJECT(venc), "profile", 1, NULL);
+  //g_object_set(G_OBJECT(venc), "profile", 1, NULL);
   g_object_set(G_OBJECT(venc), "qp-min", 18, NULL);
   g_object_set(G_OBJECT(venc), "qp-max", 22, NULL);
   g_object_set(G_OBJECT(venc), "bitrate", 2048, NULL);
@@ -324,7 +328,7 @@ main (int   argc,
   g_object_set(G_OBJECT(ichabod.aqueue), "max-size-time", 5 * GST_SECOND, NULL);
   g_object_set(G_OBJECT(ichabod.aqueue), "min-threshold-time", GST_SECOND, NULL);
   g_object_set(G_OBJECT(ichabod.vqueue), "max-size-time", 5 * GST_SECOND, NULL);
-//  g_object_set(G_OBJECT(ichabod.vqueue), "min-threshold-time", GST_SECOND, NULL);
+  //g_object_set(G_OBJECT(ichabod.vqueue), "min-threshold-time", GST_SECOND, NULL);
 
   // start with audio and video flows blocked from encoder, to allow full
   // pipeline pre-roll before encoding anything

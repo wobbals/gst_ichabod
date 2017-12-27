@@ -35,15 +35,21 @@ static GstClock* gst_horsemansrc_provide_clock(GstElement* element);
 static gboolean gst_horsemansrc_set_clock(GstElement* element, GstClock* clock);
 
 /* GstBaseSrc */
-static gboolean gst_horsemansrc_start (GstBaseSrc *src);
-static gboolean gst_horsemansrc_stop (GstBaseSrc *src);
-static gboolean gst_horsemansrc_unlock (GstBaseSrc * pthis);
-static gboolean gst_horsemansrc_unlock_stop (GstBaseSrc * pthis);
-static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event);
+static gboolean gst_horsemansrc_start(GstBaseSrc* src);
+static gboolean gst_horsemansrc_stop(GstBaseSrc* src);
+static gboolean gst_horsemansrc_unlock(GstBaseSrc* pthis);
+static gboolean gst_horsemansrc_unlock_stop(GstBaseSrc* pthis);
+static gboolean gst_horsemansrc_event(GstBaseSrc* src, GstEvent* event);
+static gboolean gst_horsemansrc_is_seekable(GstBaseSrc* src);
+static gboolean gst_horsemansrc_query(GstBaseSrc* src, GstQuery* query);
 
 /* GstPushSrc */
 static GstFlowReturn
 gst_horsemansrc_create (GstPushSrc * src, GstBuffer ** buf);
+
+// magic macros autodiscover the functions named above this one :-|
+#define gst_horsemansrc_parent_class parent_class
+G_DEFINE_TYPE (GstHorsemanSrc, gst_horsemansrc, GST_TYPE_PUSH_SRC);
 
 /* Horseman */
 void on_horseman_cb(struct horseman_s* queue,
@@ -71,7 +77,6 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   gobject_class->get_property = gst_horsemansrc_get_property;
   
   element_class->change_state = gst_horsemansrc_change_state;
-  // is this really necessary?
   element_class->provide_clock = gst_horsemansrc_provide_clock;
   element_class->set_clock = gst_horsemansrc_set_clock;
 
@@ -95,6 +100,8 @@ gst_horsemansrc_class_init (GstHorsemanSrcClass * klass)
   basesrc_class->unlock = gst_horsemansrc_unlock;
   basesrc_class->unlock_stop = gst_horsemansrc_unlock_stop;
   basesrc_class->event = gst_horsemansrc_event;
+  basesrc_class->is_seekable = gst_horsemansrc_is_seekable;
+  basesrc_class->query = gst_horsemansrc_query;
 
   pushsrc_class->create = gst_horsemansrc_create;
 
@@ -112,10 +119,13 @@ gst_horsemansrc_init (GstHorsemanSrc* pthis)
   GST_OBJECT_FLAG_SET(pthis, GST_ELEMENT_FLAG_SOURCE);
 
   gst_base_src_set_format (GST_BASE_SRC (pthis), GST_FORMAT_TIME);
-  gst_base_src_set_live (GST_BASE_SRC (pthis), TRUE);
+  // experimenting with preroll: no live sources
+  // instead, we attempt to define a linear (non-seeking) source that can be
+  // paused indefinitely
+  gst_base_src_set_live (GST_BASE_SRC (pthis), FALSE);
 
   pthis->walltime_clock = gst_wall_clock_new();
-
+  pthis->horseman_started = FALSE;
   struct horseman_config_s hconf;
   horseman_alloc(&pthis->horseman);
   hconf.p = pthis;
@@ -126,10 +136,6 @@ gst_horsemansrc_init (GstHorsemanSrc* pthis)
   g_mutex_init(&pthis->mutex);
   g_cond_init(&pthis->data_ready);
 }
-
-// magic macros autodiscover the two functions named above this one :-|
-#define gst_horsemansrc_parent_class parent_class
-G_DEFINE_TYPE (GstHorsemanSrc, gst_horsemansrc, GST_TYPE_PUSH_SRC);
 
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
@@ -164,16 +170,37 @@ static void gst_horsemansrc_finalize(GObject *object) {
 static GstStateChangeReturn gst_horsemansrc_change_state
 (GstElement* element, GstStateChange transition)
 {
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(element);
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-  g_print("ghorse: state: %d\n", transition);
 
-  if (GST_STATE_CHANGE_PAUSED_TO_PLAYING == transition) {
-    // what time is it?
+  switch (transition) {
+    case GST_STATE_CHANGE_READY_TO_PAUSED:
+      if (!pthis->horseman_started) {
+        pthis->horseman_started = TRUE;
+        ret = !horseman_start(pthis->horseman) ?
+        GST_STATE_CHANGE_SUCCESS : GST_STATE_CHANGE_FAILURE;
+      }
+      break;
+    case GST_STATE_CHANGE_READY_TO_NULL:
+      if (pthis->horseman_started) {
+        pthis->horseman_started = FALSE;
+        horseman_stop(pthis->horseman);
+      }
+    default:
+      break;
   }
-
-  // pass state change to parent element
+  // pass state change to parent element. this must *always* be called, even
+  // if subclass handles the signal (as the switch above this comment).
   ret = GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-  
+
+  GstState state;
+  GstState pending;
+  GstStateChangeReturn current_ret =
+  gst_element_get_state(element, &state, &pending, 0);
+  g_print("ghorse: state change: %d (ret=%d)\n", transition, ret);
+  g_print("current ret=%d state=%s pend=%s\n", current_ret,
+          gst_element_state_get_name(state),
+          gst_element_state_get_name(pending));
   return ret;
 }
 
@@ -242,14 +269,12 @@ static gboolean gst_horsemansrc_start(GstBaseSrc* base) {
   g_print("ghorse: start\n");
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
   pthis->is_eos = FALSE;
-  //gst_message_new_clock_provide(GST_OBJECT(base), pthis->walltime_clock, TRUE);
-  return (0 == horseman_start(pthis->horseman));
+  return TRUE;
 }
 
 static gboolean gst_horsemansrc_stop(GstBaseSrc* base) {
   g_print("ghorse: stop\n");
-  GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
-  return 0 == horseman_stop(pthis->horseman);
+  return TRUE;
 }
 
 static gboolean gst_horsemansrc_unlock(GstBaseSrc* base)
@@ -288,6 +313,16 @@ static gboolean gst_horsemansrc_event (GstBaseSrc * src, GstEvent * event) {
       break;
   }
   return GST_BASE_SRC_CLASS (parent_class)->event (src, event);
+}
+
+static gboolean gst_horsemansrc_is_seekable(GstBaseSrc* src) {
+  return FALSE;
+}
+
+static gboolean gst_horsemansrc_query(GstBaseSrc* src, GstQuery* query)
+{
+  g_print("ghorse: query %s\n", GST_QUERY_TYPE_NAME(query));
+  return GST_BASE_SRC_CLASS (parent_class)->query(src, query);
 }
 
 #pragma mark - Push Source Class Methods

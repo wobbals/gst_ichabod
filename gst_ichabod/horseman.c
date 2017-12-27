@@ -241,6 +241,9 @@ int horseman_start(struct horseman_s* pthis) {
 
 int horseman_stop(struct horseman_s* pthis) {
   int ret;
+  if (!pthis->is_running) {
+    return -1;
+  }
   pthis->is_interrupted = 1;
   pthis->is_running = 0;
   int drain_count = 0;
@@ -252,8 +255,9 @@ int horseman_stop(struct horseman_s* pthis) {
     usleep(1000);
   }
   do {
-    ret = uv_loop_close(pthis->loop);
+      ret = uv_loop_close(pthis->loop);
   } while (UV_EBUSY == ret);
+  pthis->loop = NULL;
   ret = uv_thread_join(&pthis->zmq_thread);
   int get = uv_thread_join(&pthis->loop_thread);
   return ret | get;
