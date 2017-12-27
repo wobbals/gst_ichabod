@@ -17,16 +17,14 @@
 struct ichabod_s {
   GstElement* pipeline;
   GstElement* asource;
-  GstElement* avalve;
-  // TODO: below elt should almost definitely be a multiqueue alongside video
-  GstElement* aqueue;
   GstElement* aconv;
   GstElement* afps;
   GstElement* aenc;
-  
+
+  GstElement* mqueue_src;
+  GstElement* mvalve;
+
   GstElement* vsource;
-  GstElement* vvalve;
-  GstElement* vqueue;
   GstElement* imgdec;
   GstElement* fps;
   GstElement* venc;
@@ -105,29 +103,9 @@ bus_call (GstBus     *bus,
   return TRUE;
 }
 
-static gboolean pipeline_open(GstClock* clock,
-                          GstClockTime time,
-                          GstClockID id,
-                          gpointer p_user)
-{
-  struct ichabod_s* pthis = (struct ichabod_s*) p_user;
-  g_print("ichabod: open pipeline\n");
-  g_mutex_lock(&pthis->lock);
-  if (pthis->pipe_open_requested) {
-    g_object_set(G_OBJECT(pthis->avalve), "drop", FALSE, NULL);
-    g_object_set(G_OBJECT(pthis->vvalve), "drop", FALSE, NULL);
-  }
-  g_mutex_unlock(&pthis->lock);
-  gst_clock_id_unref(id);
-  return TRUE;
-}
-
-static void request_pipeline_open_async(struct ichabod_s* pthis) {
-  GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pthis->pipeline));
-  GstClockTime time = gst_clock_get_time(clock);
-  time += 50 * GST_MSECOND;
-  GstClockID await_id = gst_clock_new_single_shot_id(clock, time);
-  gst_clock_id_wait_async(await_id, pipeline_open, pthis, NULL);
+static void pipeline_open_sync(struct ichabod_s* pthis) {
+  g_print("ichabod: open pipeline (sync)\n");
+  g_object_set(G_OBJECT(pthis->mvalve), "drop", FALSE, NULL);
 }
 
 static GstPadProbeReturn on_audio_live(GstPad *pad, GstPadProbeInfo *info,
@@ -139,7 +117,7 @@ static GstPadProbeReturn on_audio_live(GstPad *pad, GstPadProbeInfo *info,
   g_mutex_lock(&pthis->lock);
   pthis->audio_ready = TRUE;
   if (pthis->audio_ready && pthis->video_ready && !pthis->pipe_open_requested) {
-    request_pipeline_open_async(pthis);
+    pipeline_open_sync(pthis);
     pthis->pipe_open_requested = TRUE;
   }
   g_mutex_unlock(&pthis->lock);
@@ -157,7 +135,7 @@ static GstPadProbeReturn on_video_live(GstPad *pad, GstPadProbeInfo *info,
   g_mutex_lock(&pthis->lock);
   pthis->video_ready = TRUE;
   if (pthis->audio_ready && pthis->video_ready && !pthis->pipe_open_requested) {
-    request_pipeline_open_async(pthis);
+    pipeline_open_sync(pthis);
     pthis->pipe_open_requested = TRUE;
   }
   g_mutex_unlock(&pthis->lock);
@@ -222,17 +200,14 @@ main (int   argc,
   g_mutex_init(&ichabod.lock);
 
   /* Create gstreamer elements */
+  ichabod.mqueue_src = gst_element_factory_make("multiqueue", "mqueue");
+  ichabod.mvalve = gst_element_factory_make("valve", "mvalve");
   ichabod.pipeline = gst_pipeline_new ("ichabod");
   asource   = gst_element_factory_make("pulsesrc", "asrc-pulse");
-  ichabod.avalve = gst_element_factory_make("valve", "avalve");
-  ichabod.aqueue = gst_element_factory_make("queue", "aqueue");
   ichabod.afps = gst_element_factory_make("audiorate", "afps");
   aconv     = gst_element_factory_make ("audioconvert", "audio-converter");
   aenc      = gst_element_factory_make ("faac", "faaaaac");
-
   vsource   = gst_element_factory_make ("horsemansrc", "horseman");
-  ichabod.vvalve = gst_element_factory_make("valve", "vvalve");
-  ichabod.vqueue = gst_element_factory_make("queue", "vqueue");
   fps       = gst_element_factory_make ("videorate", "vfps");
   imgdec    = gst_element_factory_make ("jpegdec", "jpeg-decoder");
   venc      = gst_element_factory_make ("x264enc", "H.264 encoder");
@@ -245,13 +220,13 @@ main (int   argc,
     return -1;
   }
   
-  if (!vsource || !ichabod.vqueue || !imgdec || !venc || !fps || !mux || !sink)
+  if (!vsource || !imgdec || !venc || !fps || !mux || !sink)
   {
     g_printerr ("Video components missing. Check gst installation.\n");
     return -1;
   }
   
-  if (!asource || !ichabod.aqueue || !aconv || !aenc) {
+  if (!asource || !aconv || !aenc) {
     g_printerr("Audio components could not be created. Check gst install.\n");
     return -1;
   }
@@ -325,15 +300,12 @@ main (int   argc,
   g_object_set (G_OBJECT (ichabod.afps), "silent", FALSE, NULL);
   //g_object_set (G_OBJECT (ichabod.afps), "skip-to-first", TRUE, NULL);
 
-  g_object_set(G_OBJECT(ichabod.aqueue), "max-size-time", 5 * GST_SECOND, NULL);
-  g_object_set(G_OBJECT(ichabod.aqueue), "min-threshold-time", GST_SECOND, NULL);
-  g_object_set(G_OBJECT(ichabod.vqueue), "max-size-time", 5 * GST_SECOND, NULL);
-  //g_object_set(G_OBJECT(ichabod.vqueue), "min-threshold-time", GST_SECOND, NULL);
+  g_object_set(G_OBJECT(ichabod.mqueue_src), "max-size-time", 5 * GST_SECOND,
+               NULL);
 
-  // start with audio and video flows blocked from encoder, to allow full
-  // pipeline pre-roll before encoding anything
-  g_object_set(G_OBJECT(ichabod.avalve), "drop", TRUE, NULL);
-  g_object_set(G_OBJECT(ichabod.vvalve), "drop", TRUE, NULL);
+  // start with audio and video flows blocked from multiplexer, to allow full
+  // pipeline pre-roll before writing to file
+  g_object_set(G_OBJECT(ichabod.mvalve), "drop", TRUE, NULL);
 
   /* we add a message handler */
   bus = gst_pipeline_get_bus(GST_PIPELINE(ichabod.pipeline));
@@ -343,39 +315,50 @@ main (int   argc,
   // add all elements into the pipeline
   gst_bin_add_many(GST_BIN (ichabod.pipeline),
                    vsource,
-                   ichabod.vvalve,
-                   ichabod.vqueue,
+                   ichabod.mvalve,
                    fps,
                    imgdec, venc,
                    mux, sink,
-                   NULL);
-  gst_bin_add_many(GST_BIN (ichabod.pipeline),
                    asource,
-                   ichabod.avalve,
-                   ichabod.aqueue,
                    ichabod.afps,
-                   aconv, aenc, NULL);
+                   aconv, aenc,
+                   ichabod.mqueue_src,
+                   NULL);
 
   // video element chain
-  result = gst_element_link_many(vsource,
-                                 ichabod.vvalve,
-                                 ichabod.vqueue,
-                                 imgdec,
+  GstPad* mqueue_sink_v_pad =
+  gst_element_get_request_pad(ichabod.mqueue_src, "sink_0");
+  GstPad* mqueue_src_v_pad =
+  gst_element_get_static_pad(ichabod.mqueue_src, "src_0");
+  GstPad* imgdec_sink = gst_element_get_static_pad(imgdec, "sink");
+
+  GstPadLinkReturn link_ret = gst_pad_link(vsrc_pad, mqueue_sink_v_pad);
+  link_ret = gst_pad_link(mqueue_src_v_pad, imgdec_sink);
+
+  result = gst_element_link_many(imgdec,
                                  fps,
                                  venc,
                                  NULL);
   // audio element chain
-  result = gst_element_link_many(asource,
-                                 ichabod.avalve,
-                                 ichabod.aqueue,
-                                 aconv,
+  GstPad* mqueue_sink_a_pad =
+  gst_element_get_request_pad(ichabod.mqueue_src, "sink_1");
+  GstPad* mqueue_src_a_pad =
+  gst_element_get_static_pad(ichabod.mqueue_src, "src_1");
+  GstPad* aconv_sink = gst_element_get_static_pad(aconv, "sink");
+
+  link_ret = gst_pad_link(asrc_pad, mqueue_sink_a_pad);
+  link_ret = gst_pad_link(mqueue_src_a_pad, aconv_sink);
+
+  result = gst_element_link_many(aconv,
                                  ichabod.afps,
-                                 aenc, NULL);
+                                 aenc,
+                                 NULL);
 
   // multiplexer element chain
   result = gst_element_link(venc, mux);
   result = gst_element_link(aenc, mux);
-  result = gst_element_link(mux, ichabod.sink);
+  result = gst_element_link(mux, ichabod.mvalve);
+  result = gst_element_link(ichabod.mvalve, ichabod.sink);
 
   // set a high latency tolerance because reasons
   gst_pipeline_set_latency(GST_PIPELINE(ichabod.pipeline), GST_SECOND);
