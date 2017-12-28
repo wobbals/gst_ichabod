@@ -1,6 +1,7 @@
 #ifndef __GST_HORSEMANSRC_H__
 #define __GST_HORSEMANSRC_H__
 
+#include <stdint.h>
 #include <gst/gst.h>
 #include <gst/base/gstbasesrc.h>
 #include <gst/base/gstpushsrc.h>
