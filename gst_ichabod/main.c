@@ -16,7 +16,7 @@
 #include <gst/gst.h>
 #include <glib.h>
 #include "ichabod_bin.h"
-#include "broadcast_sink.h"
+#include "ichabod_sinks.h"
 
 int main(int argc, char *argv[])
 {
@@ -64,26 +64,7 @@ int main(int argc, char *argv[])
 
   struct ichabod_bin_s* ichabod_bin;
   ichabod_bin_alloc(&ichabod_bin);
-
-  GstElement* mux = gst_element_factory_make("mp4mux", "mymux");
-  GstElement* sink = gst_element_factory_make("filesink", "fsink");
-
-  // configure multiplexer
-  //g_signal_connect (mux, "pad-added",
-  //                  G_CALLBACK (pad_added_handler), &ichabod);
-  g_object_set(G_OBJECT(mux), "faststart", TRUE, NULL);
-  //g_object_set(G_OBJECT(mux), "streamable", TRUE, NULL);
-
-  // configure output sink
-  g_object_set (G_OBJECT (sink), "location", output_path, NULL);
-  //g_object_set (G_OBJECT (sink), "async", FALSE, NULL);
-
-  int ret = ichabod_bin_add_element(ichabod_bin, mux);
-  ret = ichabod_bin_add_element(ichabod_bin, sink);
-  GstPad* apad = gst_element_get_request_pad(mux, "audio_%u");
-  GstPad* vpad = gst_element_get_request_pad(mux, "video_%u");
-  assert(!ichabod_bin_attach_mux_sink_pad(ichabod_bin, apad, vpad));
-  gst_element_link(mux, sink);
+  int ret = ichabod_attach_file(ichabod_bin, output_path);
 
   if (broadcast_url) {
     g_print("attach broadcast url %s\n", broadcast_url);
