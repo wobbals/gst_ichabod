@@ -147,13 +147,18 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   g_object_set(G_OBJECT(pthis->asource), "buffer-time", 5000000, NULL);
 
   // configure video encoder
-  // TODO: ultrafast not accessible by string? I'm doing something wrong here.
-  g_object_set(G_OBJECT(pthis->venc), "speed-preset", 0, NULL);
-  // Profile also seems ignored, while we're at it...
-  //g_object_set(G_OBJECT(venc), "profile", 1, NULL);
-  g_object_set(G_OBJECT(pthis->venc), "qp-min", 18, NULL);
+  // TODO: switch encoding settings to bitrate target if RTMP sink is attached.
+  // presets indexed from x264.h x264_preset_names - ** INDEXING STARTS AT 1 **
+  g_object_set(G_OBJECT(pthis->venc), "speed-preset", 1, NULL);
+  // pass values indexed from gstx264enc.c. Not sure how to reference the actual
+  // object, so for testing purposes, 5=crf, 4=qp, 0=cbr. :-|
+  g_object_set(G_OBJECT(pthis->venc), "pass", 5, NULL);
+  g_object_set(G_OBJECT(pthis->venc), "qp-min", 16, NULL);
   g_object_set(G_OBJECT(pthis->venc), "qp-max", 22, NULL);
-  g_object_set(G_OBJECT(pthis->venc), "bitrate", 2048, NULL);
+  // in crf, this sets crf. in qp, this sets qp. FUN. :-|
+  g_object_set(G_OBJECT(pthis->venc), "quantizer", 18, NULL);
+  // in crf, bitrate property is just a max limit to prevent runaway filesize
+  g_object_set(G_OBJECT(pthis->venc), "bitrate", 4096, NULL);
 
   // configure constant fps filter
   g_object_set (G_OBJECT (pthis->fps), "max-rate", 30, NULL);
