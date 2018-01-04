@@ -27,7 +27,7 @@ struct ichabod_bin_s {
 
   GstElement* vsource;
   GstElement* imgdec;
-  GstElement* fps;
+  GstElement* vfps;
   GstElement* venc;
 
   GMutex lock;
@@ -86,7 +86,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   pthis->aconv = gst_element_factory_make("audioconvert", "audio-converter");
   pthis->aenc = gst_element_factory_make("faac", "faaaaac");
   pthis->vsource = gst_element_factory_make("horsemansrc", "horseman");
-  pthis->fps = gst_element_factory_make("videorate", "vfps");
+  pthis->vfps = gst_element_factory_make("videorate", "vfps");
   pthis->imgdec = gst_element_factory_make("jpegdec", "jpeg-decoder");
   pthis->venc = gst_element_factory_make("x264enc", "H.264 encoder");
   pthis->audio_out_valve = gst_element_factory_make("valve", "avalve");
@@ -161,12 +161,15 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   g_object_set(G_OBJECT(pthis->venc), "bitrate", 4096, NULL);
 
   // configure constant fps filter
-  g_object_set (G_OBJECT (pthis->fps), "max-rate", 30, NULL);
-  g_object_set (G_OBJECT (pthis->fps), "silent", FALSE, NULL);
+  // TODO: Framerate be configurable
+#define OUTPUT_VIDEO_FPS 30
+  // TODO: Periodically dump add/drop stats from videorate while in main loop.
+  g_object_set (G_OBJECT (pthis->vfps), "max-rate", OUTPUT_VIDEO_FPS, NULL);
+  g_object_set (G_OBJECT (pthis->vfps), "silent", TRUE, NULL);
   //g_object_set (G_OBJECT (fps), "skip-to-first", TRUE, NULL);
 
   // configure constant audio fps filter
-  g_object_set (G_OBJECT (pthis->afps), "silent", FALSE, NULL);
+  g_object_set (G_OBJECT (pthis->afps), "silent", TRUE, NULL);
   //g_object_set (G_OBJECT (ichabod.afps), "skip-to-first", TRUE, NULL);
 
   g_object_set(G_OBJECT(pthis->mqueue_src),
@@ -186,7 +189,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   // add all elements into the pipeline
   gst_bin_add_many(GST_BIN (pthis-> pipeline),
                    pthis->vsource,
-                   pthis->fps,
+                   pthis->vfps,
                    pthis->imgdec,
                    pthis->venc,
                    pthis->asource,
@@ -210,12 +213,28 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   GstPadLinkReturn link_ret = gst_pad_link(vsrc_pad, mqueue_sink_v_pad);
   link_ret = gst_pad_link(mqueue_src_v_pad, imgdec_sink);
 
-  gboolean result = gst_element_link_many(pthis->imgdec,
-                                          pthis->fps,
-                                          pthis->venc,
+  GstCaps* vcaps_variable_fps =
+  gst_caps_new_simple("video/x-raw",
+                      "framerate", GST_TYPE_FRACTION, 0, 1,
+                      NULL);
+  GstCaps* vcaps_constant_fps =
+  gst_caps_new_simple("video/x-raw",
+                      "framerate", GST_TYPE_FRACTION, OUTPUT_VIDEO_FPS, 1,
+                      NULL);
+
+  gst_element_link_filtered(pthis->imgdec, pthis->vfps, vcaps_variable_fps);
+  gst_element_link_filtered(pthis->vfps, pthis->venc, vcaps_constant_fps);
+
+  gst_caps_unref(vcaps_variable_fps);
+  gst_caps_unref(vcaps_constant_fps);
+  vcaps_variable_fps = NULL;
+  vcaps_constant_fps = NULL;
+
+  gboolean result = gst_element_link_many(pthis->venc,
                                           pthis->video_out_valve,
                                           pthis->video_tee,
                                           NULL);
+
   // audio element chain
   GstPad* mqueue_sink_a_pad =
   gst_element_get_request_pad(pthis->mqueue_src, "sink_1");
@@ -237,6 +256,9 @@ int setup_bin(struct ichabod_bin_s* pthis) {
                                  pthis->audio_out_valve,
                                  pthis->audio_tee,
                                  NULL);
+
+  gst_caps_unref(acaps);
+  acaps = NULL;
 
   // set a high pipeline latency tolerance because reasons
   gst_pipeline_set_latency(GST_PIPELINE(pthis->pipeline), 10 * GST_SECOND);
