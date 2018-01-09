@@ -331,11 +331,10 @@ static gboolean gst_horsemansrc_query(GstBaseSrc* src, GstQuery* query)
       gboolean live;
       gst_query_parse_latency(query, &live, &min, &max);
       //min += (GST_SECOND / 30);
-      if (GST_CLOCK_TIME_NONE == max) {
-        max = GST_SECOND / 2;
-      } else {
+      if (GST_CLOCK_TIME_NONE != max) {
         max += (GST_SECOND / 2);
       }
+      min = GST_SECOND / 2;
       gst_query_set_latency(query, TRUE, min, max);
       result = TRUE;
       break;
