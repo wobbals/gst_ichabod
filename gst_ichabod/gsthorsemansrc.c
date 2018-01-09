@@ -323,27 +323,26 @@ static gboolean gst_horsemansrc_query(GstBaseSrc* src, GstQuery* query)
 {
   g_print("ghorse: query %s\n", GST_QUERY_TYPE_NAME(query));
   gboolean result;
-  result = GST_BASE_SRC_CLASS(parent_class)->query(src, query);
+
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_LATENCY:
     {
       GstClockTime min, max;
       gboolean live;
-      gst_query_parse_latency (query, &live, &min, &max);
-      g_print("parsed latency: %d %lu %lu\n", live, min, max);
-      min += (GST_SECOND / 30);
-      if (GST_CLOCK_TIME_NONE != max) {
-        max += (GST_SECOND / 30);
+      gst_query_parse_latency(query, &live, &min, &max);
+      //min += (GST_SECOND / 30);
+      if (GST_CLOCK_TIME_NONE == max) {
+        max = GST_SECOND / 2;
       } else {
-        max = GST_SECOND / 30;
+        max += (GST_SECOND / 2);
       }
       gst_query_set_latency(query, TRUE, min, max);
       result = TRUE;
-    }
       break;
+    }
     default:
     {
-      //result = GST_BASE_SRC_CLASS(parent_class)->query(src, query);
+      result = GST_BASE_SRC_CLASS(parent_class)->query(src, query);
       break;
     }
   }
