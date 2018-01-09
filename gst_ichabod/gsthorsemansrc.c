@@ -322,7 +322,32 @@ static gboolean gst_horsemansrc_is_seekable(GstBaseSrc* src) {
 static gboolean gst_horsemansrc_query(GstBaseSrc* src, GstQuery* query)
 {
   g_print("ghorse: query %s\n", GST_QUERY_TYPE_NAME(query));
-  return GST_BASE_SRC_CLASS (parent_class)->query(src, query);
+  gboolean result;
+  result = GST_BASE_SRC_CLASS(parent_class)->query(src, query);
+  switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_LATENCY:
+    {
+      GstClockTime min, max;
+      gboolean live;
+      gst_query_parse_latency (query, &live, &min, &max);
+      g_print("parsed latency: %d %lu %lu\n", live, min, max);
+      min += (GST_SECOND / 30);
+      if (GST_CLOCK_TIME_NONE != max) {
+        max += (GST_SECOND / 30);
+      } else {
+        max = GST_SECOND / 30;
+      }
+      gst_query_set_latency(query, TRUE, min, max);
+      result = TRUE;
+    }
+      break;
+    default:
+    {
+      //result = GST_BASE_SRC_CLASS(parent_class)->query(src, query);
+      break;
+    }
+  }
+  return result;
 }
 
 #pragma mark - Push Source Class Methods
@@ -392,19 +417,15 @@ void on_horseman_cb(struct horseman_s* queue,
                             &internal, &external, &rate_n, &rate_d);
   g_print("ghorse: wallclock calibration %lu, %lu, %lu / %lu\n",
           internal, external, rate_n, rate_d);
-//  if (!internal || !external) {
-//    // TODO: We should save these buffers and readjust them once calibration is
-//    // available.
-//    g_print("ghorse: calibration looks invalid. deferring frame\n");
-//    waiting_for_calibration = TRUE;
-//  }
 
   if (!msg->eos) {
     buf = wrap_message(msg);
     GstClockTime timestamp_nano = msg->timestamp * GST_MSECOND;
     GstClockTime adjusted_pts =
     gst_wall_clock_adjust_safe(pthis->walltime_clock, timestamp_nano);
-    buf->pts =  adjusted_pts;
+    GstClockTime current_time = gst_clock_get_time(pthis->walltime_clock);
+    g_print("CLOCK DELTA %.00f\n", fabs(current_time - adjusted_pts));
+    buf->pts = adjusted_pts;
     buf->dts = GST_CLOCK_TIME_NONE;
     buf->duration = GST_CLOCK_TIME_NONE;
   }
