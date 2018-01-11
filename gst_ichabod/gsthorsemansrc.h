@@ -37,6 +37,7 @@ struct _GstHorsemanSrc {
   uint64_t frame_ct;
 
   GstClock* walltime_clock;
+  gboolean master_clock_sync;
 };
 
 struct _GstHorsemanSrcClass

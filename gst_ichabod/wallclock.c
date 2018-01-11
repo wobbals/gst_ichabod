@@ -103,7 +103,7 @@ GstClockTime gst_wall_clock_adjust_safe
   GstClockTime ret, cinternal, cexternal, cnum, cdenom;
   gst_clock_get_calibration(clock, &cinternal, &cexternal, &cnum, &cdenom);
   ret = gst_clock_adjust_with_calibration
-  (clock, internal, cinternal, cexternal,cnum, cdenom);
+  (clock, internal, cinternal, cexternal, cnum, cdenom);
   return ret;
 }
 

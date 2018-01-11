@@ -126,6 +126,7 @@ gst_horsemansrc_init (GstHorsemanSrc* pthis)
 
   pthis->walltime_clock = gst_wall_clock_new();
   pthis->horseman_started = FALSE;
+  pthis->master_clock_sync = TRUE;
   struct horseman_config_s hconf;
   horseman_alloc(&pthis->horseman);
   hconf.p = pthis;
@@ -215,8 +216,15 @@ static gboolean master_synchronize_cb(GstClock* clock,
                                       gpointer p_user)
 {
   g_print("ghorse: master calibration callback\n");
+  GstHorsemanSrc* pthis = GST_HORSEMANSRC(p_user);
+
   // this represents how much time we expect for the internal clock to sync.
   gst_clock_id_unref(id);
+
+  g_mutex_lock(&pthis->mutex);
+  pthis->master_clock_sync = TRUE;
+  g_mutex_unlock(&pthis->mutex);
+
   return TRUE;
 }
 
@@ -255,6 +263,7 @@ static gboolean gst_horsemansrc_set_clock(GstElement* element, GstClock* clock)
     gst_clock_id_wait_async(await_id, master_synchronize_cb, pthis, NULL);
     g_print("slave clock async wait for calibration ret=%d\n", ret);
     g_mutex_lock(&pthis->mutex);
+    pthis->master_clock_sync = FALSE;
     if (GST_CLOCK_OK != ret) {
       gst_clock_id_unref(await_id);
     }
@@ -349,6 +358,7 @@ static gboolean gst_horsemansrc_query(GstBaseSrc* src, GstQuery* query)
 }
 
 #pragma mark - Push Source Class Methods
+
 static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
 {
   GstFlowReturn ret;
@@ -395,13 +405,17 @@ void on_horseman_cb(struct horseman_s* queue,
 {
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(p);
   GstBuffer* buf = NULL;
+  gboolean allow_frame = FALSE;
 
   g_mutex_lock(&pthis->mutex);
   if (msg->eos) {
     pthis->is_eos = TRUE;
     g_cond_broadcast(&pthis->data_ready);
   }
-  pthis->frame_ct++;
+  if (pthis->master_clock_sync) {
+    pthis->frame_ct++;
+    allow_frame = TRUE;
+  }
   g_mutex_unlock(&pthis->mutex);
 
   GstClock* active_clock = gst_element_get_clock(GST_ELEMENT(pthis));
@@ -416,15 +430,17 @@ void on_horseman_cb(struct horseman_s* queue,
   g_print("ghorse: wallclock calibration %lu, %lu, %lu / %lu\n",
           internal, external, rate_n, rate_d);
 
-  if (!msg->eos) {
+  if (!msg->eos && allow_frame) {
     buf = wrap_message(msg);
     GstClockTime timestamp_nano = msg->timestamp * GST_MSECOND;
     GstClockTime adjusted_pts =
     gst_wall_clock_adjust_safe(pthis->walltime_clock, timestamp_nano);
     GstClockTime current_time = gst_clock_get_time(pthis->walltime_clock);
-    g_print("CLOCK DELTA %.00f\n", fabs(current_time - adjusted_pts));
+    g_print("CLOCK DELTA %lu (base_time=%lu)\n",
+            current_time - adjusted_pts,
+            gst_element_get_base_time(GST_ELEMENT(pthis)));
     buf->pts = adjusted_pts;
-    buf->dts = GST_CLOCK_TIME_NONE;
+    buf->dts = adjusted_pts;
     buf->duration = GST_CLOCK_TIME_NONE;
   }
 
