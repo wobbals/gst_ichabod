@@ -118,15 +118,15 @@ gst_horsemansrc_init (GstHorsemanSrc* pthis)
   GST_OBJECT_FLAG_SET(pthis, GST_ELEMENT_FLAG_PROVIDE_CLOCK);
   GST_OBJECT_FLAG_SET(pthis, GST_ELEMENT_FLAG_SOURCE);
 
-  gst_base_src_set_format (GST_BASE_SRC (pthis), GST_FORMAT_TIME);
-  // experimenting with preroll: no live sources
-  // instead, we attempt to define a linear (non-seeking) source that can be
-  // paused indefinitely
-  gst_base_src_set_live (GST_BASE_SRC (pthis), FALSE);
+  gst_base_src_set_format(GST_BASE_SRC (pthis), GST_FORMAT_TIME);
+  gst_base_src_set_live(GST_BASE_SRC (pthis), TRUE);
+  gst_base_src_set_async(GST_BASE_SRC(pthis), TRUE);
 
   pthis->walltime_clock = gst_wall_clock_new();
   pthis->horseman_started = FALSE;
   pthis->master_clock_sync = TRUE;
+  pthis->start_ack = FALSE;
+
   struct horseman_config_s hconf;
   horseman_alloc(&pthis->horseman);
   hconf.p = pthis;
@@ -244,7 +244,7 @@ static gboolean gst_horsemansrc_set_clock(GstElement* element, GstClock* clock)
     // one-shot calibration bootleg to get things started immediately
     GstClockTime internal = gst_clock_get_internal_time(slave);
     GstClockTime external = gst_clock_get_time(master);
-    // just assume the clocks run at the same speed for now
+    // just assume the clocks run at the same speed for now (should be close)
     gst_clock_set_calibration(slave, internal, external, 1, 1);
 
     GstClockTime timeout = gst_clock_get_timeout(slave);
@@ -278,6 +278,7 @@ static gboolean gst_horsemansrc_start(GstBaseSrc* base) {
   g_print("ghorse: start\n");
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(base);
   pthis->is_eos = FALSE;
+  GstFlowReturn ret = gst_base_src_start_wait(base);
   return TRUE;
 }
 
@@ -412,23 +413,27 @@ void on_horseman_cb(struct horseman_s* queue,
     pthis->is_eos = TRUE;
     g_cond_broadcast(&pthis->data_ready);
   }
-  if (pthis->master_clock_sync) {
+  GstClock* active_clock = gst_element_get_clock(GST_ELEMENT(pthis));
+  if (pthis->master_clock_sync && active_clock) {
     pthis->frame_ct++;
     allow_frame = TRUE;
   }
+  if (!pthis->start_ack) {
+    pthis->start_ack = TRUE;
+    gst_base_src_start_complete(GST_BASE_SRC(pthis), GST_FLOW_OK);
+  }
   g_mutex_unlock(&pthis->mutex);
 
-  GstClock* active_clock = gst_element_get_clock(GST_ELEMENT(pthis));
-  if (!active_clock) {
-    g_print("ghorse: received frame, but element has no clock. what do?\n");
-    return;
-  }
+  if (active_clock) {
+    GstClockTime internal, external, rate_n, rate_d;
+    gst_clock_get_calibration(pthis->walltime_clock,
+                              &internal, &external, &rate_n, &rate_d);
+    g_print("ghorse: wallclock calibration %lu, %lu, %lu / %lu\n",
+            internal, external, rate_n, rate_d);
 
-  GstClockTime internal, external, rate_n, rate_d;
-  gst_clock_get_calibration(pthis->walltime_clock,
-                            &internal, &external, &rate_n, &rate_d);
-  g_print("ghorse: wallclock calibration %lu, %lu, %lu / %lu\n",
-          internal, external, rate_n, rate_d);
+  } else {
+    g_print("ghorse: missing active clock\n");
+  }
 
   if (!msg->eos && allow_frame) {
     buf = wrap_message(msg);
@@ -439,6 +444,7 @@ void on_horseman_cb(struct horseman_s* queue,
     g_print("CLOCK DELTA %lu (base_time=%lu)\n",
             current_time - adjusted_pts,
             gst_element_get_base_time(GST_ELEMENT(pthis)));
+
     buf->pts = adjusted_pts;
     buf->dts = adjusted_pts;
     buf->duration = GST_CLOCK_TIME_NONE;

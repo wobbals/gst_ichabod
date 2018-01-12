@@ -166,11 +166,11 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   // TODO: Periodically dump add/drop stats from videorate while in main loop.
   g_object_set (G_OBJECT (pthis->vfps), "max-rate", OUTPUT_VIDEO_FPS, NULL);
   g_object_set (G_OBJECT (pthis->vfps), "silent", TRUE, NULL);
-  //g_object_set (G_OBJECT (fps), "skip-to-first", TRUE, NULL);
+  g_object_set (G_OBJECT (pthis->vfps), "skip-to-first", FALSE, NULL);
 
   // configure constant audio fps filter
   g_object_set (G_OBJECT (pthis->afps), "silent", TRUE, NULL);
-  //g_object_set (G_OBJECT (ichabod.afps), "skip-to-first", TRUE, NULL);
+  g_object_set (G_OBJECT (pthis->afps), "skip-to-first", FALSE, NULL);
 
   g_object_set(G_OBJECT(pthis->mqueue_src),
                "max-size-time", 5 * GST_SECOND,

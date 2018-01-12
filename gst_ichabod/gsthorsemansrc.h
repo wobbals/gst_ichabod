@@ -38,6 +38,7 @@ struct _GstHorsemanSrc {
 
   GstClock* walltime_clock;
   gboolean master_clock_sync;
+  gboolean start_ack;
 };
 
 struct _GstHorsemanSrcClass
