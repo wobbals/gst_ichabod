@@ -366,7 +366,7 @@ static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(src);
   g_print("ghorse: pushsrc.create\n");
   g_mutex_lock(&pthis->mutex);
-  while (g_queue_is_empty(pthis->frame_queue) &&
+  while (g_queue_get_length(pthis->frame_queue) < 2 &&
          !pthis->flushing &&
          !pthis->is_eos)
   {
@@ -374,7 +374,13 @@ static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
     g_cond_wait(&pthis->data_ready, &pthis->mutex);
   }
   GstBuffer* head = g_queue_pop_head(pthis->frame_queue);
-  ret = head ? GST_FLOW_OK : GST_FLOW_ERROR;
+  GstBuffer* next = g_queue_peek_head(pthis->frame_queue);
+  if (head && next) {
+    ret = GST_FLOW_OK;
+    head->duration = next->pts - head->pts;
+  } else {
+    ret = GST_FLOW_ERROR;
+  }
   *buf = head;
   if (pthis->flushing) {
     ret = GST_FLOW_FLUSHING;
