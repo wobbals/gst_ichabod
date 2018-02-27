@@ -39,7 +39,8 @@ struct ichabod_bin_s {
   GstElement* video_out_valve;
   GstElement* video_tee;
   GstElement* audio_out_valve;
-  GstElement* audio_tee;
+  GstElement* audio_enc_tee;
+  GstElement* audio_raw_tee;
 };
 
 static int setup_bin(struct ichabod_bin_s* pthis);
@@ -91,7 +92,8 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   pthis->venc = gst_element_factory_make("x264enc", "H.264 encoder");
   pthis->audio_out_valve = gst_element_factory_make("valve", "avalve");
   pthis->video_out_valve = gst_element_factory_make("valve", "vvalve");
-  pthis->audio_tee = gst_element_factory_make("tee", "atee");
+  pthis->audio_enc_tee = gst_element_factory_make("tee", "aenctee");
+  pthis->audio_raw_tee = gst_element_factory_make("tee", "arawtee");
   pthis->video_tee = gst_element_factory_make("tee", "vtee");
 
   if (!pthis->pipeline) {
@@ -195,11 +197,12 @@ int setup_bin(struct ichabod_bin_s* pthis) {
                    pthis->asource,
                    pthis->afps,
                    pthis->aconv,
+                   pthis->audio_raw_tee,
                    pthis->aenc,
                    pthis->mqueue_src,
                    pthis->audio_out_valve,
                    pthis->video_out_valve,
-                   pthis->audio_tee,
+                   pthis->audio_enc_tee,
                    pthis->video_tee,
                    NULL);
 
@@ -252,9 +255,10 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 
   result = gst_element_link_filtered(pthis->aconv, pthis->afps, acaps);
   result = gst_element_link_many(pthis->afps,
+                                 pthis->audio_raw_tee,
                                  pthis->aenc,
                                  pthis->audio_out_valve,
-                                 pthis->audio_tee,
+                                 pthis->audio_enc_tee,
                                  NULL);
 
   gst_caps_unref(acaps);
@@ -271,7 +275,6 @@ static void open_pipeline_valves(struct ichabod_bin_s* pthis) {
   g_print("ichabod: open pipeline (sync)\n");
   g_object_set(G_OBJECT(pthis->video_out_valve), "drop", FALSE, NULL);
   g_object_set(G_OBJECT(pthis->audio_out_valve), "drop", FALSE, NULL);
-
 }
 
 static GstPadProbeReturn on_audio_live
@@ -294,7 +297,7 @@ static GstPadProbeReturn on_audio_live
 static GstPadProbeReturn on_video_live
 (GstPad *pad, GstPadProbeInfo *info, gpointer p_user)
 {
-  // _PASS == keep probing, _DROP == kill this probe
+  // _PASS == keep probing, _REMOVE == kill this probe
   GstPadProbeReturn ret = GST_PAD_PROBE_PASS;
   //return GST_PAD_PROBE_REMOVE;
   struct ichabod_bin_s* pthis = p_user;
@@ -387,10 +390,6 @@ static gboolean on_gst_bus(GstBus* bus, GstMessage* msg, gpointer data)
 #pragma mark - external bin control
 
 int ichabod_bin_start(struct ichabod_bin_s* pthis) {
-  GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pthis->pipeline),
-                            GST_DEBUG_GRAPH_SHOW_ALL,
-                            "pipeline");
-
   GstStateChangeReturn result;
   
   /* Set the pipeline to "playing" state */
@@ -400,6 +399,10 @@ int ichabod_bin_start(struct ichabod_bin_s* pthis) {
     g_printerr("failed to start pipeline!\n");
     return -1;
   }
+
+  GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pthis->pipeline),
+                            GST_DEBUG_GRAPH_SHOW_ALL,
+                            "pipeline");
 
   // TODO: This should be in it's own thread and obey stop/start cycles.
   /* Iterate */
@@ -430,7 +433,7 @@ int ichabod_bin_attach_mux_sink_pad
 (struct ichabod_bin_s* pthis, GstPad* audio_sink, GstPad* video_sink)
 {
   GstPad* a_tee_src_pad =
-  gst_element_get_request_pad(pthis->audio_tee, "src_%u");
+  gst_element_get_request_pad(pthis->audio_enc_tee, "src_%u");
   GstPad* v_tee_src_pad =
   gst_element_get_request_pad(pthis->video_tee, "src_%u");
 
@@ -457,3 +460,46 @@ int ichabod_bin_attach_mux_sink_pad
   return aq_ret & as_ret & vq_ret & vs_ret;
 }
 
+int ichabod_bin_attach_raw_audio_sink
+(struct ichabod_bin_s* pthis, GstPad* audio_sink)
+{
+  GstPad* a_tee_src_pad =
+  gst_element_get_request_pad(pthis->audio_raw_tee, "src_%u");
+
+  gchar* pad_name = gst_pad_get_name(a_tee_src_pad);
+  char queue_name[32];
+  sprintf(queue_name, "arawqueue_%s", pad_name);
+  GstElement* queue = gst_element_factory_make("queue", queue_name);
+  g_object_set(G_OBJECT(queue), "max-size-time", 10 * GST_SECOND, NULL);
+  gst_bin_add(GST_BIN(pthis->pipeline), queue);
+  g_free(pad_name);
+
+  GstPad* queue_sink_pad = gst_element_get_static_pad(queue, "sink");
+  GstPad* queue_src_pad = gst_element_get_static_pad(queue, "src");
+
+  GstPadLinkReturn ret = gst_pad_link(a_tee_src_pad, queue_sink_pad);
+  ret = gst_pad_link(queue_src_pad, audio_sink);
+  return ret;
+}
+
+int ichabod_bin_attach_enc_video_sink
+(struct ichabod_bin_s* pthis, GstPad* video_sink)
+{
+  GstPad* v_tee_src_pad =
+  gst_element_get_request_pad(pthis->video_tee, "src_%u");
+
+  gchar* pad_name = gst_pad_get_name(v_tee_src_pad);
+  char queue_name[32];
+  sprintf(queue_name, "vencqueue_%s", pad_name);
+  GstElement* queue = gst_element_factory_make("queue", queue_name);
+  g_object_set(G_OBJECT(queue), "max-size-time", 10 * GST_SECOND, NULL);
+  gst_bin_add(GST_BIN(pthis->pipeline), queue);
+  g_free(pad_name);
+
+  GstPad* queue_sink_pad = gst_element_get_static_pad(queue, "sink");
+  GstPad* queue_src_pad = gst_element_get_static_pad(queue, "src");
+
+  GstPadLinkReturn ret = gst_pad_link(v_tee_src_pad, queue_sink_pad);
+  ret = gst_pad_link(queue_src_pad, video_sink);
+  return ret;
+}

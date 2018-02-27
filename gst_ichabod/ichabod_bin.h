@@ -26,4 +26,9 @@ int ichabod_bin_add_element(struct ichabod_bin_s* bin, GstElement* element);
 int ichabod_bin_attach_mux_sink_pad
 (struct ichabod_bin_s* bin, GstPad* audio_sink, GstPad* video_sink);
 
+int ichabod_bin_attach_raw_audio_sink
+(struct ichabod_bin_s* bin, GstPad* audio_sink);
+int ichabod_bin_attach_enc_video_sink
+(struct ichabod_bin_s* bin, GstPad* video_sink);
+
 #endif /* ichabod_bin_h */
