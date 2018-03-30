@@ -79,27 +79,35 @@ int main(int argc, char *argv[])
         break;
       case AUDIO_PORT_OPT:
         rtp_opts.audio_port = atoi(optarg);
+        g_print("rtp_audio_port=%d\n", rtp_opts.audio_port);
         break;
       case AUDIO_HOST_OPT:
         rtp_opts.audio_host = optarg;
+        g_print("rtp_audio_port=%s\n", rtp_opts.audio_host);
         break;
       case AUDIO_SSRC_OPT:
         rtp_opts.audio_ssrc = atol(optarg);
+        g_print("rtp_audio_ssrc=%ld\n", rtp_opts.audio_ssrc);
         break;
       case AUDIO_PT_OPT:
         rtp_opts.audio_pt = atoi(optarg);
+        g_print("rtp_audio_pt=%d\n", rtp_opts.audio_pt);
         break;
       case VIDEO_PORT_OPT:
         rtp_opts.video_port = atoi(optarg);
+        g_print("rtp_video_port=%d\n", rtp_opts.video_port);
         break;
       case VIDEO_HOST_OPT:
         rtp_opts.video_host = optarg;
+        g_print("rtp_video_host=%s\n", rtp_opts.video_host);
         break;
       case VIDEO_SSRC_OPT:
         rtp_opts.video_ssrc = atol(optarg);
+        g_print("rtp_video_ssrc=%ld\n", rtp_opts.video_ssrc);
         break;
       case VIDEO_PT_OPT:
         rtp_opts.video_pt = atoi(optarg);
+        g_print("rtp_video_pt=%d\n", rtp_opts.video_pt);
         break;
       case '?':
         if (isprint(optopt))
