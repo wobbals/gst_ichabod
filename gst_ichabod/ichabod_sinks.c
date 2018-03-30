@@ -15,6 +15,8 @@ int ichabod_attach_rtmp(struct ichabod_bin_s* bin, const char* broadcast_url) {
 
   g_object_set(G_OBJECT(mux), "streamable", TRUE, NULL);
   g_object_set(G_OBJECT(sink), "location", broadcast_url, NULL);
+  // don't sync on sink. sink should not sync.
+  g_object_set(G_OBJECT(sink), "sync", FALSE, NULL);
 
   int ret = ichabod_bin_add_element(bin, mux);
   ret = ichabod_bin_add_element(bin, sink);
