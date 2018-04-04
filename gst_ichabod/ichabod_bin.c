@@ -146,7 +146,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 
   // give plenty of buffer tolerance to the audio source, which can get finicky
   // when the pipeline runs slowly. (read: nearly always)
-  g_object_set(G_OBJECT(pthis->asource), "buffer-time", 5000000, NULL);
+  g_object_set(G_OBJECT(pthis->asource), "buffer-time", 100000, NULL);
 
   // configure video encoder
   // TODO: switch encoding settings to bitrate target if RTMP sink is attached.
@@ -442,7 +442,7 @@ int ichabod_bin_attach_mux_sink_pad
   sprintf(queue_name, "mqueue_%s", pad_name);
   GstElement* mqueue = gst_element_factory_make("multiqueue", queue_name);
   gst_bin_add(GST_BIN(pthis->pipeline), mqueue);
-  g_object_set(G_OBJECT(mqueue), "max-size-time", 10 * GST_SECOND, NULL);
+  g_object_set(G_OBJECT(mqueue), "max-size-time", 50 * GST_MSECOND, NULL);
   g_free(pad_name);
 
   GstPad* mqueue_v_sink_pad = gst_element_get_request_pad(mqueue, "sink_0");

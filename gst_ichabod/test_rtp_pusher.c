@@ -31,8 +31,8 @@ static void send_ice_candidate_message
 (GstElement* webrtc G_GNUC_UNUSED, guint mlineindex, gchar* candidate,
  gpointer user_data G_GNUC_UNUSED)
 {
-  g_print("send_ice_candidate_message\n");
-  webrtc_control_send_ice_candidate(rtc_ctrl, candidate);
+  g_print("send_ice_candidate_message: %d\n", mlineindex);
+  webrtc_control_send_ice_candidate(rtc_ctrl, mlineindex, candidate);
 }
 
 /* Offer created by our pipeline, to be sent to the peer */
@@ -87,12 +87,17 @@ static gboolean start_pipeline(void)
   GError *error = NULL;
 
   pipe1 =
-  gst_parse_launch ("webrtcbin name=sendrecv " STUN_SERVER
-                    "videotestsrc horizontal-speed=1 ! queue ! vp8enc deadline=1 ! rtpvp8pay ! "
-                    "queue ! " RTP_CAPS_VP8 "96 ! sendrecv. "
-                    "audiotestsrc wave=red-noise ! queue ! opusenc ! rtpopuspay ! "
-                    "queue ! " RTP_CAPS_OPUS "97 ! sendrecv. ",
-                    &error);
+  gst_parse_launch("webrtcbin name=sendrecv " STUN_SERVER
+                   "filesrc "
+                   "location=/var/lib/rtpPusher/keyboardcat_baseline.mp4 "
+                   //"location=/Users/charley/src/wormhole/tools/keyboardcat_baseline.mp4 "
+                   "! queue ! qtdemux name=demux demux. "
+                   //name=remotesrc uri=file:///Users/charley/src/wormhole/tools/keyboardcat_baseline.mp4 "
+                   "! queue ! avdec_h264 ! vp8enc keyframe-max-dist=15 deadline=1 ! rtpvp8pay ! "
+                   "queue ! " RTP_CAPS_VP8 "96 ! sendrecv. "
+                   "demux. ! faad ! audioresample ! audio/x-raw, rate=48000 ! opusenc ! rtpopuspay ! "
+                   "queue ! " RTP_CAPS_OPUS "97 ! sendrecv. "
+                   , &error);
 
   if (error) {
     g_printerr ("Failed to parse launch: %s\n", error->message);
@@ -122,6 +127,10 @@ static gboolean start_pipeline(void)
   ret = gst_element_set_state (GST_ELEMENT (pipe1), GST_STATE_PLAYING);
   if (ret == GST_STATE_CHANGE_FAILURE)
     goto err;
+
+  GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipe1),
+                            GST_DEBUG_GRAPH_SHOW_ALL,
+                            "webrtcpipe");
 
   return TRUE;
 
@@ -178,11 +187,19 @@ void on_remote_answer(struct webrtc_control_s* webrtc_control,
   g_assert_nonnull (answer);
 
   /* Set remote description on our pipeline */
-  GstPromise *promise = gst_promise_new ();
+  GstPromise *promise = gst_promise_new();
   g_signal_emit_by_name (webrtc1, "set-remote-description", answer,
                          promise);
   gst_promise_interrupt (promise);
   gst_promise_unref (promise);
+}
+
+void on_remote_candidate(struct webrtc_control_s* webrtc_control,
+                         int8_t m_line_index, const char* candidate,
+                         void* p)
+{
+  /* Add ice candidate sent by remote peer */
+  g_signal_emit_by_name(webrtc1, "add-ice-candidate", m_line_index, candidate);
 }
 
 int main(int argc, char** argv)
@@ -201,6 +218,7 @@ int main(int argc, char** argv)
   struct webrtc_control_config_s webrtc_config;
   webrtc_config.on_create_offer = on_create_offer;
   webrtc_config.on_remote_answer = on_remote_answer;
+  webrtc_config.on_remote_candidate = on_remote_candidate;
   webrtc_config.p = 0xdeadbeef;
   webrtc_control_alloc(&rtc_ctrl);
   webrtc_control_config(rtc_ctrl, &webrtc_config);
@@ -208,11 +226,11 @@ int main(int argc, char** argv)
 
   loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (loop);
-//
-//  gst_element_set_state (GST_ELEMENT (pipe1), GST_STATE_NULL);
-//  g_print ("Pipeline stopped\n");
-//
-//  gst_object_unref (pipe1);
+
+  gst_element_set_state (GST_ELEMENT (pipe1), GST_STATE_NULL);
+  g_print ("Pipeline stopped\n");
+
+  gst_object_unref (pipe1);
 
   return 0;
 }

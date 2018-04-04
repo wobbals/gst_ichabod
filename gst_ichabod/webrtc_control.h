@@ -16,6 +16,9 @@ struct webrtc_control_config_s {
   void (*on_remote_answer)(struct webrtc_control_s* webrtc_control,
                            const char* remote_answer,
                            void* p);
+  void (*on_remote_candidate)(struct webrtc_control_s* webrtc_control,
+                              int8_t m_line_index, const char* candidate,
+                              void* p);
   void* p;
 };
 
@@ -30,6 +33,7 @@ int webrtc_control_stop(struct webrtc_control_s* webrtc_control);
 int webrtc_control_send_offer(struct webrtc_control_s* webrtc_control,
                               const char* offer);
 int webrtc_control_send_ice_candidate(struct webrtc_control_s* webrtc_control,
+                                      int8_t m_line_index,
                                       const char* candidate);
 
 #endif /* webrtc_control_h */

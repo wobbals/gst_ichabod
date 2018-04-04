@@ -28,6 +28,9 @@ struct webrtc_control_s {
   void (*remote_answer_cb)(struct webrtc_control_s* webrtc_control,
                            const char* remote_answer,
                            void* p);
+  void (*remote_candidate_cb)(struct webrtc_control_s* webrtc_control,
+                              int8_t m_line_index, const char* candidate,
+                              void* p);
 
   void* callback_p;
 };
@@ -35,6 +38,7 @@ struct webrtc_control_s {
 struct ctrl_msg_s {
   char* type;
   char* data;
+  char* data2;
 };
 
 static void clear_msg(struct ctrl_msg_s* msg) {
@@ -45,6 +49,11 @@ static void clear_msg(struct ctrl_msg_s* msg) {
   if (msg->data) {
     free(msg->data);
     msg->data = NULL;
+  }
+
+  if (msg->data2) {
+    free(msg->data2);
+    msg->data2 = NULL;
   }
 }
 
@@ -61,14 +70,18 @@ static void cb_loop_main(void* p) {
 
 #define MSG_TYPE_CREATE_OFFER "create_offer"
 #define MSG_TYPE_SET_REMOTE_DESCRIPTION "set_remote_description"
+#define MSG_TYPE_ADD_CANDIDATE "add_ice_candidate"
 
 static int handle_msg(struct webrtc_control_s* pthis, struct ctrl_msg_s* msg) {
-  printf("webrtc_control: handle_msg: type=%s, data=%s\n",
-         msg->type, msg->data);
+  printf("webrtc_control: handle_msg: type=%s, data=%s data2=%s\n",
+         msg->type, msg->data, msg->data2);
   if (!strcmp(MSG_TYPE_CREATE_OFFER, msg->type)) {
     pthis->create_offer_cb(pthis, pthis->callback_p);
   } else if (!strcmp(MSG_TYPE_SET_REMOTE_DESCRIPTION, msg->type)) {
     pthis->remote_answer_cb(pthis, msg->data, pthis->callback_p);
+  } else if (!strcmp(MSG_TYPE_ADD_CANDIDATE, msg->type)) {
+    pthis->remote_candidate_cb(pthis, atoi(msg->data), msg->data2,
+                               pthis->callback_p);
   } else {
     printf("webrtc_control: handle_msg: unknown message type %s\n", msg->type);
   }
@@ -98,6 +111,8 @@ static int recv_msg(struct webrtc_control_s* pthis, struct ctrl_msg_s* msg,
       msg->type = (char*)sz_msg;
     } else if (!msg->data) {
       msg->data = (char*)sz_msg;
+    } else if (!msg->data2) {
+      msg->data2 = (char*)sz_msg;
     } else {
       printf("unknown extra message part received. freeing.");
       free(sz_msg);
@@ -166,6 +181,7 @@ void webrtc_control_config(struct webrtc_control_s* pthis,
   pthis->callback_p = config->p;
   pthis->create_offer_cb = config->on_create_offer;
   pthis->remote_answer_cb = config->on_remote_answer;
+  pthis->remote_candidate_cb = config->on_remote_candidate;
 }
 
 int webrtc_control_start(struct webrtc_control_s* pthis) {
@@ -204,10 +220,15 @@ int webrtc_control_send_offer(struct webrtc_control_s* pthis, const char* offer)
 
 #define MSG_TYPE_CANDIDATE "icecandidate"
 int webrtc_control_send_ice_candidate(struct webrtc_control_s* pthis,
+                                      int8_t m_line_index,
                                       const char* candidate)
 {
+  char sz_mline[4] = {0};
+  sprintf(sz_mline, "%d", m_line_index);
   int ret = zmq_send(pthis->push_socket, MSG_TYPE_CANDIDATE,
                      strlen(MSG_TYPE_CANDIDATE), ZMQ_SNDMORE);
+  ret = zmq_send(pthis->push_socket, sz_mline,
+                 strlen(sz_mline), ZMQ_SNDMORE);
   size_t len = strlen(candidate);
   ret = zmq_send(pthis->push_socket, candidate, len, 0);
   return len != ret;
