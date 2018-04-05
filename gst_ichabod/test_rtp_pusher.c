@@ -16,6 +16,7 @@
 #include <gst/webrtc/webrtc.h>
 
 #include "webrtc_control.h"
+#include "rtp_relay.h"
 
 static GMainLoop *loop;
 static GstElement *pipe1, *webrtc1;
@@ -64,8 +65,7 @@ static void on_negotiation_needed (GstElement * element, gpointer user_data)
 {
   GArray *transceivers;
   g_signal_emit_by_name (webrtc1, "get-transceivers", &transceivers);
-//  // TODO: This hack is from another. Fix it when rtptransciever has setter for
-//  // direction.
+//  // set this peerconnection to sendonly
 //  for (int i = 0; i < transceivers->len; i++) {
 //    GstWebRTCRTPTransceiver* trans = g_array_index(transceivers,
 //                                                   GstWebRTCRTPTransceiver*, 1);
@@ -80,6 +80,7 @@ static void on_negotiation_needed (GstElement * element, gpointer user_data)
 #define STUN_SERVER " stun-server=stun://stun.l.google.com:19302 "
 #define RTP_CAPS_OPUS "application/x-rtp,media=audio,encoding-name=OPUS,payload="
 #define RTP_CAPS_VP8 "application/x-rtp,media=video,encoding-name=VP8,payload="
+#define RTP_CAPS_H264 "application/x-rtp,media=video,encoding-name=H264,payload="
 
 static gboolean start_pipeline(void)
 {
@@ -94,6 +95,7 @@ static gboolean start_pipeline(void)
                    "! queue ! qtdemux name=demux demux. "
                    //name=remotesrc uri=file:///Users/charley/src/wormhole/tools/keyboardcat_baseline.mp4 "
                    "! queue ! avdec_h264 ! vp8enc keyframe-max-dist=15 deadline=1 ! rtpvp8pay ! "
+                   //"! queue ! h264parse ! rtph264pay config-interval=2 ! "
                    "queue ! " RTP_CAPS_VP8 "96 ! sendrecv. "
                    "demux. ! faad ! audioresample ! audio/x-raw, rate=48000 ! opusenc ! rtpopuspay ! "
                    "queue ! " RTP_CAPS_OPUS "97 ! sendrecv. "
@@ -214,6 +216,27 @@ int main(int argc, char** argv)
   if (!check_plugins ()) {
     return -1;
   }
+
+
+  struct rtp_relay_s* rtp_recv;
+  struct rtp_relay_config_s rtp_config;
+  rtp_config.audio_recv_rtp_port = 5002;
+  rtp_config.video_recv_rtp_port = 5000;
+  rtp_config.recv_enabled = 1;
+  rtp_config.send_enabled = 1;
+  rtp_config.video_send_rtp_host = "127.0.0.1";
+  rtp_config.audio_send_rtp_host = "127.0.0.1";
+  rtp_config.video_send_rtp_port = 5000;
+  rtp_config.video_send_rtcp_port = 5001;
+  rtp_config.audio_send_rtp_port = 5002;
+  rtp_relay_alloc(&rtp_recv);
+  rtp_relay_config(rtp_recv, &rtp_config);
+//  GstCaps* video_caps =
+//  gst_caps_new_simple("application/x-rtp",
+//                      "media", G_TYPE_STRING, "video",
+//                      "encoding-name", G_TYPE_STRING, "VP8", NULL);
+//  GstPad* video_src = rtp_relay_video_src(rtp_recv, video_caps);
+
 
   struct webrtc_control_config_s webrtc_config;
   webrtc_config.on_create_offer = on_create_offer;

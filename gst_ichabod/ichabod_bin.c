@@ -41,6 +41,8 @@ struct ichabod_bin_s {
   GstElement* audio_out_valve;
   GstElement* audio_enc_tee;
   GstElement* audio_raw_tee;
+
+  struct rtp_relay_s* rtp_relay;
 };
 
 static int setup_bin(struct ichabod_bin_s* pthis);
@@ -460,9 +462,17 @@ int ichabod_bin_attach_mux_sink_pad
   return aq_ret & as_ret & vq_ret & vs_ret;
 }
 
-int ichabod_bin_attach_raw_audio_sink
-(struct ichabod_bin_s* pthis, GstPad* audio_sink)
+GstPad* ichabod_bin_create_audio_src(struct ichabod_bin_s* pthis, GstCaps* caps)
 {
+  // TODO: If the requested src is an encoded type that we have already done,
+  // then we should tee the encoder output rather than this raw format.
+  for (int i = 0; i < gst_caps_get_size(caps); i++) {
+    GstStructure *structure = gst_caps_get_structure(caps, i);
+    const gchar* name = gst_structure_get_name(structure);
+    g_print("ichabod_bin: create audio source with caps %s\n", name);
+    g_assert(!strcmp("audio/x-raw", name));
+  }
+
   GstPad* a_tee_src_pad =
   gst_element_get_request_pad(pthis->audio_raw_tee, "src_%u");
 
@@ -478,13 +488,20 @@ int ichabod_bin_attach_raw_audio_sink
   GstPad* queue_src_pad = gst_element_get_static_pad(queue, "src");
 
   GstPadLinkReturn ret = gst_pad_link(a_tee_src_pad, queue_sink_pad);
-  ret = gst_pad_link(queue_src_pad, audio_sink);
-  return ret;
+  g_assert(!ret);
+  return queue_src_pad;
 }
 
-int ichabod_bin_attach_enc_video_sink
-(struct ichabod_bin_s* pthis, GstPad* video_sink)
+GstPad* ichabod_bin_create_video_src(struct ichabod_bin_s* pthis, GstCaps* caps)
 {
+  // TODO: This should support both encoded and raw video interception
+  for (int i = 0; i < gst_caps_get_size(caps); i++) {
+    GstStructure *structure = gst_caps_get_structure(caps, i);
+    const gchar* name = gst_structure_get_name(structure);
+    g_print("ichabod_bin: create video source with caps %s\n", name);
+    g_assert(!strcmp("video/x-h264", name));
+  }
+
   GstPad* v_tee_src_pad =
   gst_element_get_request_pad(pthis->video_tee, "src_%u");
 
@@ -500,6 +517,15 @@ int ichabod_bin_attach_enc_video_sink
   GstPad* queue_src_pad = gst_element_get_static_pad(queue, "src");
 
   GstPadLinkReturn ret = gst_pad_link(v_tee_src_pad, queue_sink_pad);
-  ret = gst_pad_link(queue_src_pad, video_sink);
-  return ret;
+  g_assert(!ret);
+  return queue_src_pad;
+}
+
+void ichabod_bin_set_rtp_relay(struct ichabod_bin_s* pthis,
+                               struct rtp_relay_s* rtp_relay)
+{
+  pthis->rtp_relay = rtp_relay;
+  gboolean ret = gst_bin_add(GST_BIN(pthis->pipeline),
+                             GST_ELEMENT(rtp_relay_get_bin(rtp_relay)));
+  g_assert(ret);
 }

@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 
   char* output_path = NULL;
   char* broadcast_url = NULL;
-  struct rtp_opts_s rtp_opts = { 0 };
+  struct rtp_relay_config_s rtp_opts = { 0 };
 
   static struct option long_options[] =
   {
@@ -71,12 +71,12 @@ int main(int argc, char *argv[])
         broadcast_url = optarg;
         break;
       case AUDIO_PORT_OPT:
-        rtp_opts.audio_port = atoi(optarg);
-        g_print("rtp_audio_port=%d\n", rtp_opts.audio_port);
+        rtp_opts.audio_send_rtp_port = atoi(optarg);
+        g_print("rtp_audio_port=%d\n", rtp_opts.audio_send_rtp_port);
         break;
       case AUDIO_HOST_OPT:
-        rtp_opts.audio_host = optarg;
-        g_print("rtp_audio_port=%s\n", rtp_opts.audio_host);
+        rtp_opts.audio_send_rtp_host = optarg;
+        g_print("audio_send_rtp_host=%s\n", rtp_opts.audio_send_rtp_host);
         break;
       case AUDIO_SSRC_OPT:
         rtp_opts.audio_ssrc = atol(optarg);
@@ -87,16 +87,16 @@ int main(int argc, char *argv[])
         g_print("rtp_audio_pt=%d\n", rtp_opts.audio_pt);
         break;
       case AUDIO_RTCP_PORT_OPT:
-        rtp_opts.audio_rtcp_port = atoi(optarg);
-        g_print("rtp_audio_rtcp_port=%d\n", rtp_opts.audio_rtcp_port);
+        rtp_opts.audio_send_rtcp_port = atoi(optarg);
+        g_print("rtp_audio_rtcp_port=%d\n", rtp_opts.audio_send_rtcp_port);
         break;
       case VIDEO_PORT_OPT:
-        rtp_opts.video_port = atoi(optarg);
-        g_print("rtp_video_port=%d\n", rtp_opts.video_port);
+        rtp_opts.video_send_rtp_port = atoi(optarg);
+        g_print("rtp_video_port=%d\n", rtp_opts.video_send_rtp_port);
         break;
       case VIDEO_HOST_OPT:
-        rtp_opts.video_host = optarg;
-        g_print("rtp_video_host=%s\n", rtp_opts.video_host);
+        rtp_opts.video_send_rtp_host = optarg;
+        g_print("rtp_video_host=%s\n", rtp_opts.video_send_rtp_host);
         break;
       case VIDEO_SSRC_OPT:
         rtp_opts.video_ssrc = atol(optarg);
@@ -107,8 +107,8 @@ int main(int argc, char *argv[])
         g_print("rtp_video_pt=%d\n", rtp_opts.video_pt);
         break;
       case VIDEO_RTCP_PORT_OPT:
-        rtp_opts.video_rtcp_port = atoi(optarg);
-        g_print("rtp_video_rtcp_port=%d\n", rtp_opts.video_rtcp_port);
+        rtp_opts.video_send_rtcp_port = atoi(optarg);
+        g_print("rtp_video_rtcp_port=%d\n", rtp_opts.video_send_rtcp_port);
         break;
       case '?':
         if (isprint(optopt))
@@ -134,15 +134,16 @@ int main(int argc, char *argv[])
     ret = ichabod_attach_rtmp(ichabod_bin, broadcast_url);
   }
 
-  if (rtp_opts.audio_port &&
-      rtp_opts.audio_host &&
+  if (rtp_opts.audio_send_rtp_port &&
+      rtp_opts.audio_send_rtp_host &&
       rtp_opts.audio_ssrc &&
-      rtp_opts.video_port &&
-      rtp_opts.video_host &&
+      rtp_opts.video_send_rtp_port &&
+      rtp_opts.video_send_rtp_host &&
       rtp_opts.video_ssrc &&
       rtp_opts.video_pt &&
       rtp_opts.audio_pt)
   {
+    rtp_opts.send_enabled = 1;
     ret = ichabod_attach_rtp(ichabod_bin, &rtp_opts);
   } else {
     g_print("missing/incomplete rtp configuration. skipping rtp output\n");

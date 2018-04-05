@@ -10,21 +10,9 @@
 
 #include "ichabod_bin.h"
 
-struct rtp_opts_s {
-  char* audio_host;
-  int audio_port;
-  int audio_rtcp_port;
-  unsigned long audio_ssrc;
-  char audio_pt;
-  char* video_host;
-  int video_port;
-  int video_rtcp_port;
-  unsigned long video_ssrc;
-  char video_pt;
-};
-
 int ichabod_attach_rtmp(struct ichabod_bin_s* bin, const char* broadcast_url);
 int ichabod_attach_file(struct ichabod_bin_s* bin, const char* path);
-int ichabod_attach_rtp(struct ichabod_bin_s* bin, struct rtp_opts_s* rtp_opts);
+int ichabod_attach_rtp(struct ichabod_bin_s* bin,
+                       struct rtp_relay_config_s* rtp_config);
 
 #endif /* broadcast_sink_h */
