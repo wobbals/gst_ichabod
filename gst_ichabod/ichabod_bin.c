@@ -267,7 +267,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   acaps = NULL;
 
   // set a high pipeline latency tolerance because reasons
-  gst_pipeline_set_latency(GST_PIPELINE(pthis->pipeline), 10 * GST_SECOND);
+  //gst_pipeline_set_latency(GST_PIPELINE(pthis->pipeline), 10 * GST_SECOND);
   return 0;
 }
 
@@ -393,7 +393,8 @@ static gboolean on_gst_bus(GstBus* bus, GstMessage* msg, gpointer data)
 
 int ichabod_bin_start(struct ichabod_bin_s* pthis) {
   GstStateChangeReturn result;
-  
+
+  result = gst_bin_sync_children_states(GST_BIN(pthis->pipeline));
   /* Set the pipeline to "playing" state */
   result = gst_element_set_state(pthis->pipeline, GST_STATE_PLAYING);
 
@@ -525,7 +526,8 @@ void ichabod_bin_set_rtp_relay(struct ichabod_bin_s* pthis,
                                struct rtp_relay_s* rtp_relay)
 {
   pthis->rtp_relay = rtp_relay;
-  gboolean ret = gst_bin_add(GST_BIN(pthis->pipeline),
-                             GST_ELEMENT(rtp_relay_get_bin(rtp_relay)));
+  GstElement* relay_element = GST_ELEMENT(rtp_relay_get_bin(rtp_relay));
+  gboolean ret = gst_bin_add(GST_BIN(pthis->pipeline), relay_element);
   g_assert(ret);
+  gst_element_sync_state_with_parent(relay_element);
 }

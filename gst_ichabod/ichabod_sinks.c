@@ -41,7 +41,8 @@ int ichabod_attach_file(struct ichabod_bin_s* bin, const char* path) {
 
   // configure output sink
   g_object_set(G_OBJECT(sink), "location", path, NULL);
-  g_object_set(G_OBJECT(sink), "async", FALSE, NULL);
+  //g_object_set(G_OBJECT(sink), "async", TRUE, NULL);
+  g_object_set(G_OBJECT(sink), "sync", FALSE, NULL);
 
   int ret = ichabod_bin_add_element(bin, mux);
   ret = ichabod_bin_add_element(bin, sink);

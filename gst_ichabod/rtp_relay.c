@@ -55,6 +55,17 @@ static GstElement* create_udp_src(int port) {
   return src;
 }
 
+static GstElement* create_udp_sink(const char* host, int port, int bind) {
+  GstElement* sink = gst_element_factory_make("udpsink", NULL);
+  g_object_set(G_OBJECT(sink),
+               "sync", FALSE,
+               "async", FALSE,
+               "host", host,
+               "port", port,
+               "bind-port", bind, NULL);
+  return sink;
+}
+
 static GstPad* create_h264_recv_chain(struct rtp_relay_s* pthis) {
   GstElement* depacketizer = gst_element_factory_make("rtph264depay", NULL);
   GstElement* decoder = gst_element_factory_make("avdec_h264", NULL);
@@ -94,30 +105,34 @@ int rtp_relay_config(struct rtp_relay_s* pthis,
     GstPad* video_send_rtcp_src =
     gst_element_get_request_pad(pthis->rtpbin, "send_rtcp_src_0");
 
-    GstElement* udp_video_rtp_send = gst_element_factory_make("udpsink", NULL);
+    GstElement* udp_video_rtp_send =
+    create_udp_sink(pthis->config.video_send_rtp_host,
+                   pthis->config.video_send_rtp_port,
+                   pthis->config.video_recv_rtp_port);
     gst_bin_add(pthis->bin, udp_video_rtp_send);
-    g_object_set(G_OBJECT(udp_video_rtp_send), "sync", FALSE, NULL);
-    g_object_set(G_OBJECT(udp_video_rtp_send), "host",
-                 pthis->config.video_send_rtp_host, NULL);
-    g_object_set(G_OBJECT(udp_video_rtp_send),
-                 "port", pthis->config.video_send_rtp_port, NULL);
-    g_object_set(G_OBJECT(udp_video_rtp_send),
-                 "bind-port", pthis->config.video_recv_rtp_port, NULL);
+
+    GstElement* udp_video_rtcp_send =
+    create_udp_sink(pthis->config.video_send_rtp_host,
+                    pthis->config.video_send_rtcp_port,
+                    pthis->config.video_recv_rtcp_port);
+    gst_bin_add(pthis->bin, udp_video_rtcp_send);
+
+    GstElement* udp_audio_rtp_send =
+    create_udp_sink(pthis->config.audio_send_rtp_host,
+                    pthis->config.audio_send_rtp_port,
+                    pthis->config.audio_recv_rtp_port);
+    gst_bin_add(pthis->bin, udp_audio_rtp_send);
+
+    GstElement* udp_audio_rtcp_send =
+    create_udp_sink(pthis->config.audio_send_rtp_host,
+                    pthis->config.audio_send_rtcp_port,
+                    pthis->config.audio_recv_rtcp_port);
+    gst_bin_add(pthis->bin, udp_audio_rtcp_send);
 
     GstPad* udp_video_rtp_send_sink =
     gst_element_get_static_pad(udp_video_rtp_send, "sink");
     pad_link = gst_pad_link(video_send_rtp_src, udp_video_rtp_send_sink);
     g_assert(!pad_link);
-
-    GstElement* udp_video_rtcp_send = gst_element_factory_make("udpsink", NULL);
-    gst_bin_add(pthis->bin, udp_video_rtcp_send);
-    g_object_set(G_OBJECT(udp_video_rtcp_send), "sync", FALSE, NULL);
-    g_object_set(G_OBJECT(udp_video_rtcp_send), "host",
-                 pthis->config.video_send_rtp_host, NULL);
-    g_object_set(G_OBJECT(udp_video_rtcp_send),
-                 "port", pthis->config.video_send_rtcp_port, NULL);
-    g_object_set(G_OBJECT(udp_video_rtcp_send),
-                 "bind-port", pthis->config.video_recv_rtcp_port, NULL);
 
     GstPad* udp_video_rtcp_send_sink =
     gst_element_get_static_pad(udp_video_rtcp_send, "sink");
@@ -131,30 +146,10 @@ int rtp_relay_config(struct rtp_relay_s* pthis,
     GstPad* audio_send_rtcp_src =
     gst_element_get_request_pad(pthis->rtpbin, "send_rtcp_src_1");
 
-    GstElement* udp_audio_send = gst_element_factory_make("udpsink", NULL);
-    gst_bin_add(pthis->bin, udp_audio_send);
-    g_object_set(G_OBJECT(udp_audio_send), "sync", FALSE, NULL);
-    g_object_set(G_OBJECT(udp_audio_send), "host",
-                 pthis->config.audio_send_rtp_host, NULL);
-    g_object_set(G_OBJECT(udp_audio_send),
-                 "port", pthis->config.audio_send_rtp_port, NULL);
-    g_object_set(G_OBJECT(udp_audio_send),
-                 "bind-port", pthis->config.audio_recv_rtp_port, NULL);
-
     GstPad* udp_audio_send_sink =
-    gst_element_get_static_pad(udp_audio_send, "sink");
+    gst_element_get_static_pad(udp_audio_rtp_send, "sink");
     pad_link = gst_pad_link(audio_send_rtp_src, udp_audio_send_sink);
     g_assert(!pad_link);
-
-    GstElement* udp_audio_rtcp_send = gst_element_factory_make("udpsink", NULL);
-    gst_bin_add(pthis->bin, udp_audio_rtcp_send);
-    g_object_set(G_OBJECT(udp_audio_rtcp_send), "sync", FALSE, NULL);
-    g_object_set(G_OBJECT(udp_audio_rtcp_send), "host",
-                 pthis->config.audio_send_rtp_host, NULL);
-    g_object_set(G_OBJECT(udp_audio_rtcp_send),
-                 "port", pthis->config.audio_send_rtcp_port, NULL);
-    g_object_set(G_OBJECT(udp_audio_rtcp_send),
-                 "bind-port", pthis->config.audio_recv_rtcp_port, NULL);
 
     GstPad* udp_audio_rtcp_send_sink =
     gst_element_get_static_pad(udp_audio_rtcp_send, "sink");
@@ -194,6 +189,8 @@ int rtp_relay_set_send_video_src(struct rtp_relay_s* pthis,
   link = gst_pad_link(video_src, h264_rtp_ghost);
   g_assert(!link);
 
+  gboolean sync = gst_element_sync_state_with_parent(GST_ELEMENT(pthis->bin));
+  g_assert(sync);
   return 0;
 }
 
@@ -205,6 +202,7 @@ int rtp_relay_set_send_audio_src(struct rtp_relay_s* pthis,
   GstElement* opus_enc = gst_element_factory_make("opusenc", NULL);
   GstElement* opus_pay = gst_element_factory_make("rtpopuspay", NULL);
   gst_bin_add_many(pthis->bin, opus_enc, opus_pay, NULL);
+  gst_element_link(opus_enc, opus_pay);
   g_object_set(G_OBJECT(opus_pay), "pt", pthis->config.audio_pt, NULL);
   g_object_set(G_OBJECT(opus_pay), "ssrc", pthis->config.audio_ssrc, NULL);
 
@@ -219,6 +217,9 @@ int rtp_relay_set_send_audio_src(struct rtp_relay_s* pthis,
   gst_element_add_pad(GST_ELEMENT(pthis->bin), opus_rtp_ghost);
   link = gst_pad_link(audio_src, opus_rtp_ghost);
   g_assert(!link);
+
+  gboolean sync = gst_element_sync_state_with_parent(GST_ELEMENT(pthis->bin));
+  g_assert(sync);
   return 0;
 }
 
