@@ -19,6 +19,11 @@
 		D42E5A821F65737E00C89691 /* libgstreamer-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */; };
 		D444E65020768B3100C671EC /* rtp_relay.c in Sources */ = {isa = PBXBuildFile; fileRef = D444E64F20768B3100C671EC /* rtp_relay.c */; };
 		D444E6512076C2BC00C671EC /* rtp_relay.c in Sources */ = {isa = PBXBuildFile; fileRef = D444E64F20768B3100C671EC /* rtp_relay.c */; };
+		D444E655207BC1D400C671EC /* libgio-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D444E654207BC1D300C671EC /* libgio-2.0.0.dylib */; };
+		D444E658207C132500C671EC /* webrtc_relay.c in Sources */ = {isa = PBXBuildFile; fileRef = D444E657207C132500C671EC /* webrtc_relay.c */; };
+		D444E659207C1FBE00C671EC /* libgstwebrtc-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C36B7C206C3A420011C048 /* libgstwebrtc-1.0.0.dylib */; };
+		D444E65B207C1FD200C671EC /* libgstsdp-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C36B7B206C3A420011C048 /* libgstsdp-1.0.0.dylib */; };
+		D444E65C207C1FE000C671EC /* webrtc_control.c in Sources */ = {isa = PBXBuildFile; fileRef = D49AA40F206C2F5600F032C4 /* webrtc_control.c */; };
 		D4888C621FB61B9F00BD43F7 /* libogg.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */; };
 		D49AA3FE206C2EBE00F032C4 /* libuv.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947E1FD6038800485CA5 /* libuv.1.dylib */; };
 		D49AA3FF206C2EBE00F032C4 /* libzmq.5.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */; };
@@ -80,7 +85,10 @@
 		D42E5A7C1F65737E00C89691 /* libgstbase-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstbase-1.0.0.dylib"; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/libgstbase-1.0.0.dylib"; sourceTree = "<group>"; };
 		D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstreamer-1.0.0.dylib"; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/libgstreamer-1.0.0.dylib"; sourceTree = "<group>"; };
 		D444E64E20768B3100C671EC /* rtp_relay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rtp_relay.h; sourceTree = "<group>"; };
-		D444E64F20768B3100C671EC /* rtp_relay.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rtp_relay.c; sourceTree = "<group>"; };
+		D444E64F20768B3100C671EC /* rtp_relay.c */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = rtp_relay.c; sourceTree = "<group>"; };
+		D444E654207BC1D300C671EC /* libgio-2.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgio-2.0.0.dylib"; path = "../../../../usr/local/Cellar/glib/2.56.0/lib/libgio-2.0.0.dylib"; sourceTree = "<group>"; };
+		D444E656207C132500C671EC /* webrtc_relay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webrtc_relay.h; sourceTree = "<group>"; };
+		D444E657207C132500C671EC /* webrtc_relay.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = webrtc_relay.c; sourceTree = "<group>"; };
 		D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libogg.0.dylib; path = ../../../../usr/local/Cellar/libogg/1.3.2/lib/libogg.0.dylib; sourceTree = "<group>"; };
 		D49AA3F3206C2E9400F032C4 /* test_rtp_pusher.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rtp_pusher.c; sourceTree = "<group>"; };
 		D49AA40C206C2EBE00F032C4 /* rtp_pusher */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = rtp_pusher; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -106,6 +114,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D444E65B207C1FD200C671EC /* libgstsdp-1.0.0.dylib in Frameworks */,
+				D444E659207C1FBE00C671EC /* libgstwebrtc-1.0.0.dylib in Frameworks */,
+				D444E655207BC1D400C671EC /* libgio-2.0.0.dylib in Frameworks */,
 				D4C8947F1FD6038800485CA5 /* libuv.1.dylib in Frameworks */,
 				D4C8947D1FD6031600485CA5 /* libzmq.5.dylib in Frameworks */,
 				D4888C621FB61B9F00BD43F7 /* libogg.0.dylib in Frameworks */,
@@ -176,6 +187,8 @@
 				D4226D291FF5746C007FA4D5 /* ichabod_sinks.h */,
 				D4226D2A1FF5746C007FA4D5 /* ichabod_sinks.c */,
 				D49AA3F3206C2E9400F032C4 /* test_rtp_pusher.c */,
+				D444E656207C132500C671EC /* webrtc_relay.h */,
+				D444E657207C132500C671EC /* webrtc_relay.c */,
 				D49AA40E206C2F5600F032C4 /* webrtc_control.h */,
 				D49AA40F206C2F5600F032C4 /* webrtc_control.c */,
 				D444E64E20768B3100C671EC /* rtp_relay.h */,
@@ -187,6 +200,7 @@
 		D42E5A711F65735400C89691 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D444E654207BC1D300C671EC /* libgio-2.0.0.dylib */,
 				D4C36B7B206C3A420011C048 /* libgstsdp-1.0.0.dylib */,
 				D4C36B7C206C3A420011C048 /* libgstwebrtc-1.0.0.dylib */,
 				D4C36B78206C39C40011C048 /* libgstreamer-1.0.0.dylib */,
@@ -293,6 +307,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				D444E65020768B3100C671EC /* rtp_relay.c in Sources */,
+				D444E658207C132500C671EC /* webrtc_relay.c in Sources */,
+				D444E65C207C1FE000C671EC /* webrtc_control.c in Sources */,
 				D4226D2B1FF5746C007FA4D5 /* ichabod_sinks.c in Sources */,
 				D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */,
 				D40EE29A1FE05AD30039FA82 /* ichabod_bin.c in Sources */,
@@ -422,6 +438,7 @@
 					/usr/local/Cellar/libogg/1.3.2/lib,
 					/usr/local/Cellar/zeromq/4.2.2/lib,
 					/usr/local/Cellar/libuv/1.13.1/lib,
+					/usr/local/Cellar/glib/2.56.0/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -444,6 +461,7 @@
 					/usr/local/Cellar/libogg/1.3.2/lib,
 					/usr/local/Cellar/zeromq/4.2.2/lib,
 					/usr/local/Cellar/libuv/1.13.1/lib,
+					/usr/local/Cellar/glib/2.56.0/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

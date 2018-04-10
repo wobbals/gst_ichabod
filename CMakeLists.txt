@@ -6,7 +6,6 @@ set (CMAKE_C_FLAGS "--std=gnu99 ${CMAKE_C_FLAGS}")
 
 file (GLOB SOURCES "gst_ichabod/*.c")
 list (REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/gst_ichabod/main.c")
-list (REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/gst_ichabod/test_rtp_pusher.c")
 
 message ("libcrane using sources: ${SOURCES}")
 
@@ -16,6 +15,7 @@ pkg_check_modules (LIBZIP REQUIRED libzip)
 pkg_check_modules (LIBJANSSON REQUIRED jansson)
 pkg_check_modules (LIBZMQ REQUIRED libzmq)
 pkg_check_modules (LIBGSTREAMER REQUIRED gstreamer-1.0)
+pkg_check_modules (LIBGIO REQUIRED gio-2.0)
 pkg_check_modules (LIBGSTREAMERBASE REQUIRED gstreamer-base-1.0)
 pkg_check_modules (LIBGSTWEBRTC REQUIRED gstreamer-webrtc-1.0)
 pkg_check_modules (LIBGSTSDP REQUIRED gstreamer-sdp-1.0)
@@ -46,6 +46,7 @@ link_libraries (${LIBZIP_LDFLAGS})
 link_libraries (${LIBJANSSON_LDFLAGS})
 link_libraries (${LIBZMQ_LDFLAGS})
 link_libraries (${LIBGSTREAMER_LDFLAGS})
+link_libraries (${LIBGIO_LDFLAGS})
 link_libraries (${LIBGSTREAMERBASE_LDFLAGS})
 link_libraries (${LIBGSTWEBRTC_LDFLAGS})
 link_libraries (${LIBGSTSDP_LDFLAGS})
@@ -58,6 +59,7 @@ include_directories (
   ${LIBCURL_INCLUDE_DIRS}
   ${LIBZMQ_INCLUDE_DIRS}
   ${LIBGSTREAMER_INCLUDE_DIRS}
+  ${LIBGIO_INCLUDE_DIRS}
   ${LIBGSTREAMERBASE_INCLUDE_DIRS}
   ${LIBGSTWEBRTC_INCLUDE_DIRS}
   ${LLIBGSTSDP_INCLUDE_DIRS}
@@ -67,4 +69,3 @@ include_directories (
 add_library (crane ${SOURCES})
 link_libraries (crane)
 add_executable (ichabod "gst_ichabod/main.c")
-add_executable (rtp_pusher "gst_ichabod/test_rtp_pusher.c")

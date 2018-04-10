@@ -467,10 +467,10 @@ void on_horseman_cb(struct horseman_s* queue,
             buf->pts, msg->timestamp,
             len, pthis->frame_ct);
 
-    if (pthis->frame_ct == 10) {
+    if (pthis->frame_ct == 300) {
       GST_DEBUG_BIN_TO_DOT_FILE(gst_object_get_parent(GST_ELEMENT(pthis)),
                                 GST_DEBUG_GRAPH_SHOW_ALL,
-                                "pipeline_10frames");
+                                "pipeline300");
     }
   }
 }

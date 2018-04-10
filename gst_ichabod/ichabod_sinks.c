@@ -56,20 +56,23 @@ int ichabod_attach_file(struct ichabod_bin_s* bin, const char* path) {
 int ichabod_attach_rtp(struct ichabod_bin_s* bin,
                        struct rtp_relay_config_s* rtp_config)
 {
+  int ret = 0;
   struct rtp_relay_s* rtp_relay;
   rtp_relay_alloc(&rtp_relay);
   rtp_relay_config(rtp_relay, rtp_config);
   ichabod_bin_set_rtp_relay(bin, rtp_relay);
 
-  GstCaps* video_caps = gst_caps_new_simple("video/x-h264", NULL);
-  GstPad* video_src = ichabod_bin_create_video_src(bin, video_caps);
-  int ret = rtp_relay_set_send_video_src(rtp_relay, video_src, video_caps);
-  gst_caps_unref(video_caps);
+  if (rtp_config->send_enabled) {
+    GstCaps* video_caps = gst_caps_new_simple("video/x-h264", NULL);
+    GstPad* video_src = ichabod_bin_create_video_src(bin, video_caps);
+    ret = rtp_relay_set_send_video_src(rtp_relay, video_src, video_caps);
+    gst_caps_unref(video_caps);
 
-  GstCaps* audio_caps = gst_caps_new_simple("audio/x-raw", NULL);
-  GstPad* audio_src = ichabod_bin_create_audio_src(bin, audio_caps);
-  ret = rtp_relay_set_send_audio_src(rtp_relay, audio_src, audio_caps);
-  gst_caps_unref(audio_caps);
+    GstCaps* audio_caps = gst_caps_new_simple("audio/x-raw", NULL);
+    GstPad* audio_src = ichabod_bin_create_audio_src(bin, audio_caps);
+    ret = rtp_relay_set_send_audio_src(rtp_relay, audio_src, audio_caps);
+    gst_caps_unref(audio_caps);
+  }
 
   return ret;
 }

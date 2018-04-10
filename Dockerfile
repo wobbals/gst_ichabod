@@ -8,7 +8,8 @@ yasm libpng-dev libjpeg-turbo8-dev gconf-service libasound2 libatk1.0-0 \
 libcairo2 libcups2 libdbus-1-3 libfontconfig1 libfreetype6 libgconf-2-4 \
 pkg-config curl libcurl4-gnutls-dev libpulse-dev pulseaudio alsa-utils \
 gettext autopoint bison flex libfaac-dev librtmp-dev libfaad-dev gtk-doc-tools \
-openssl libssl-dev ca-certificates libvpx-dev tcpdump net-tools && \
+openssl libssl-dev ca-certificates libvpx-dev libogg-dev \
+tcpdump net-tools graphviz && \
 curl https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
 echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | \
 tee /etc/apt/sources.list.d/google-chrome.list && apt-get update && \
@@ -97,7 +98,7 @@ COPY gst_ichabod /var/lib/ichabod/gst_ichabod
 RUN mkdir -p /var/lib/ichabod/build /var/lib/ichabod/bin && \
 cd /var/lib/ichabod/build && \
 cmake .. && \
-make && mv ichabod ../bin && mv rtp_pusher ../bin && cd .. && \
+make && mv ichabod ../bin && cd .. && \
 rm -rf ichabod build CMakeLists.txt
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
