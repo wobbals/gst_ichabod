@@ -181,17 +181,22 @@ static void maybe_create_webrtc_relay(struct rtp_relay_s* pthis) {
 }
 
 static GstPad* create_h264_recv_chain(struct rtp_relay_s* pthis) {
+  GstElement* queue = gst_element_factory_make("queue", NULL);
   GstElement* depacketizer = gst_element_factory_make("rtph264depay", NULL);
   GstElement* parser = gst_element_factory_make("h264parse", NULL);
   g_object_set(G_OBJECT(parser), "config-interval", 1, NULL);
   GstElement* decoder = gst_element_factory_make("avdec_h264", NULL);
   GstElement* encoder = gst_element_factory_make("vp8enc", NULL);
+  g_object_set(G_OBJECT(encoder),
+               "keyframe-max-dist", 15,
+               "deadline", 1,
+               NULL);
   GstElement* packetizer = gst_element_factory_make("rtpvp8pay", NULL);
 
-  gst_bin_add_many(pthis->bin, depacketizer, parser, decoder,
+  gst_bin_add_many(pthis->bin, queue, depacketizer, parser, decoder,
                    encoder, packetizer,
                    NULL);
-  gst_element_link_many(depacketizer, parser, decoder,
+  gst_element_link_many(queue, depacketizer, parser, decoder,
                         encoder, packetizer,
                         NULL);
 
@@ -208,11 +213,12 @@ static GstPad* create_h264_recv_chain(struct rtp_relay_s* pthis) {
   g_assert(pthis->video_send_caps);
 
   gst_bin_sync_children_states(pthis->bin);
-  GstPad* sink = gst_element_get_static_pad(depacketizer, "sink");
+  GstPad* sink = gst_element_get_static_pad(queue, "sink");
   return sink;
 }
 
 static GstPad* create_opus_recv_chain(struct rtp_relay_s* pthis) {
+  GstElement* queue = gst_element_factory_make("queue", NULL);
   GstElement* depacketizer = gst_element_factory_make("rtpopusdepay", NULL);
   GstElement* parser = gst_element_factory_make("opusparse", NULL);
   GstElement* muxer = gst_element_factory_make("oggmux", NULL);
@@ -222,10 +228,12 @@ static GstPad* create_opus_recv_chain(struct rtp_relay_s* pthis) {
                "async", FALSE,
                "location", "/tmp/audio_recv.ogg",
                NULL);
-  gst_bin_add_many(pthis->bin, depacketizer, parser, muxer, filesink, NULL);
-  gst_element_link_many(depacketizer, parser, muxer, filesink, NULL);
+  gst_bin_add_many(pthis->bin,
+                   queue, depacketizer, parser, muxer, filesink,
+                   NULL);
+  gst_element_link_many(queue, depacketizer, parser, muxer, filesink, NULL);
   gst_bin_sync_children_states(pthis->bin);
-  GstPad* sink = gst_element_get_static_pad(depacketizer, "sink");
+  GstPad* sink = gst_element_get_static_pad(queue, "sink");
   return sink;
 }
 

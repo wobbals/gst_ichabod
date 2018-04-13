@@ -32,15 +32,6 @@ static void send_ice_candidate_message
 static void on_negotiation_needed(GstElement* element,
                                   struct webrtc_relay_s* pthis)
 {
-//  GArray *transceivers;
-//  g_signal_emit_by_name (pthis->webrtcbin, "get-transceivers", &transceivers);
-//    // set this peerconnection to sendonly
-//    for (int i = 0; i < transceivers->len; i++) {
-//      GstWebRTCRTPTransceiver* trans =
-//      g_array_index(transceivers, GstWebRTCRTPTransceiver*, 1);
-//      trans->direction = GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDONLY;
-//      trans->current_direction = GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDONLY;
-//    }
   GstPromise *promise;
   promise = gst_promise_new_with_change_func(on_offer_created, pthis, NULL);
   g_signal_emit_by_name(pthis->webrtcbin, "create-offer", pthis, promise);
