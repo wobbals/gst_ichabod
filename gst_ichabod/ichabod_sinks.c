@@ -12,15 +12,22 @@
 int ichabod_attach_rtmp(struct ichabod_bin_s* bin, const char* broadcast_url) {
   GstElement* mux = gst_element_factory_make("flvmux", "flvmux");
   GstElement* sink = gst_element_factory_make("rtmpsink", "rtmpsink");
+  GstElement* sink2 = gst_element_factory_make("rtmpsink", "rtmpsink");
 
   g_object_set(G_OBJECT(mux), "streamable", TRUE, NULL);
-  g_object_set(G_OBJECT(sink), "location", broadcast_url, NULL);
+  g_object_set(G_OBJECT(sink), "location", "rtmp://a.rtmp.youtube.com/live2/k8v2-5stf-utk5-cuhc", NULL);
   // don't sync on sink. sink should not sync.
   g_object_set(G_OBJECT(sink), "sync", FALSE, NULL);
 
+  g_object_set(G_OBJECT(sink2), "location", "rtmp://live-waw.twitch.tv/app/live_25376970_2Fe06fvUyHJOfIUviiOIOJW5QgzG71", NULL);
+  // don't sync on sink. sink should not sync.
+  g_object_set(G_OBJECT(sink2), "sync", FALSE, NULL);
+
   int ret = ichabod_bin_add_element(bin, mux);
   ret = ichabod_bin_add_element(bin, sink);
+  ret = ichabod_bin_add_element(bin, sink2);
   gboolean result = gst_element_link(mux, sink);
+  gboolean result2 = gst_element_link(mux, sink2);
 
   GstPad* v_mux_sink = gst_element_get_request_pad(mux, "video");
   GstPad* a_mux_sink = gst_element_get_request_pad(mux, "audio");
