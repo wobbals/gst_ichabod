@@ -5,6 +5,7 @@
 //  Created by Charley Robinson on 9/10/17.
 //
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <getopt.h>
@@ -15,18 +16,21 @@
 #include <assert.h>
 #include <gst/gst.h>
 #include <glib.h>
+#include <gmodule.h>
 #include "ichabod_bin.h"
 #include "ichabod_sinks.h"
 
 int main(int argc, char *argv[])
 {
+  printf("dupa");
   int c;
   char cwd[1024];
   g_print("%d\n", getpid());
   g_print("%s\n", getcwd(cwd, sizeof(cwd)));
 
+  GSList *broadcast_urls = NULL;
+  GSList *output_paths = NULL;
   char* output_path = NULL;
-  char* broadcast_url = NULL;
   static struct option long_options[] =
   {
     {"output", optional_argument,       0, 'o'},
@@ -42,10 +46,11 @@ int main(int argc, char *argv[])
     switch (c)
     {
       case 'o':
-        output_path = optarg;
+      output_path = optarg;
+        output_paths = g_slist_append(output_paths, optarg);
         break;
       case 'b':
-        broadcast_url = optarg;
+        broadcast_urls = g_slist_append(broadcast_urls, optarg);
         break;
       case '?':
         if (isprint(optopt))
@@ -66,12 +71,14 @@ int main(int argc, char *argv[])
   ichabod_bin_alloc(&ichabod_bin);
   int ret = ichabod_attach_file(ichabod_bin, output_path);
 
-  if (broadcast_url) {
-    g_print("attach broadcast url %s\n", broadcast_url);
-    ret = ichabod_attach_rtmp(ichabod_bin, broadcast_url);
+  if (broadcast_urls) {
+    ret = ichabod_attach_rtmp(ichabod_bin, broadcast_urls);
   }
 
   ichabod_bin_start(ichabod_bin);
   
+  g_slist_free(broadcast_urls);
+  g_slist_free(output_paths);
+
   return 0;
 }

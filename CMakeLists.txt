@@ -10,6 +10,7 @@ list (REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/gst_ichabod/main.c")
 message ("libcrane using sources: ${SOURCES}")
 
 find_package (PkgConfig)
+pkg_check_modules (GLIB REQUIRED glib-2.0)
 pkg_check_modules (LIBUV REQUIRED libuv)
 pkg_check_modules (LIBZIP REQUIRED libzip)
 pkg_check_modules (LIBJANSSON REQUIRED jansson)
@@ -38,6 +39,7 @@ pkg_check_modules (LIBCURL curl)
 #   set(LIBAVFILTER_LDFLAGS "${REPAIRED_FLAG}")
 # endif()
 
+link_libraries (${GLIB_LDFLAGS})
 link_libraries (${LIBUV_LDFLAGS})
 link_libraries (${LIBZIP_LDFLAGS})
 link_libraries (${LIBJANSSON_LDFLAGS})
@@ -47,6 +49,7 @@ link_libraries (${LIBGSTREAMERBASE_LDFLAGS})
 link_libraries (curl)
 
 include_directories (
+  ${GLIB_INCLUDE_DIRS}
   ${LIBUV_INCLUDE_DIRS}
   ${LIBZIP_INCLUDE_DIRS}
   ${LIBJANSSON_INCLUDE_DIRS}

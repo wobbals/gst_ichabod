@@ -9,8 +9,9 @@
 #define broadcast_sink_h
 
 #include "ichabod_bin.h"
+#include <gmodule.h>
 
-int ichabod_attach_rtmp(struct ichabod_bin_s* bin, const char* broadcast_url);
+int ichabod_attach_rtmp(struct ichabod_bin_s* bin, GSList *broadcast_urls);
 int ichabod_attach_file(struct ichabod_bin_s* bin, const char* path);
 
 #endif /* broadcast_sink_h */
