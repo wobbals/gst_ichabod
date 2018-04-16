@@ -4,8 +4,6 @@
 //
 //  Created by Charley Robinson on 9/10/17.
 //
-
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <getopt.h>
@@ -22,7 +20,6 @@
 
 int main(int argc, char *argv[])
 {
-  printf("dupa");
   int c;
   char cwd[1024];
   g_print("%d\n", getpid());
@@ -30,7 +27,6 @@ int main(int argc, char *argv[])
 
   GSList *broadcast_urls = NULL;
   GSList *output_paths = NULL;
-  char* output_path = NULL;
   static struct option long_options[] =
   {
     {"output", optional_argument,       0, 'o'},
@@ -46,7 +42,6 @@ int main(int argc, char *argv[])
     switch (c)
     {
       case 'o':
-      output_path = optarg;
         output_paths = g_slist_append(output_paths, optarg);
         break;
       case 'b':
@@ -63,14 +58,14 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (!output_path) {
-    output_path = "output.mp4";
+  if (!output_paths) {
+    output_paths = g_slist_append(output_paths, "output.mp4");
   }
 
   struct ichabod_bin_s* ichabod_bin;
   ichabod_bin_alloc(&ichabod_bin);
-  int ret = ichabod_attach_file(ichabod_bin, output_path);
 
+  int ret = ichabod_attach_file(ichabod_bin, output_paths);
   if (broadcast_urls) {
     ret = ichabod_attach_rtmp(ichabod_bin, broadcast_urls);
   }
