@@ -5,8 +5,6 @@
 //  Created by Charley Robinson on 12/28/17.
 //
 #include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <assert.h>
 #include <gst/gst.h>
 #include <glib.h>
