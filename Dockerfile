@@ -94,12 +94,12 @@ COPY CMakeLists.txt /var/lib/ichabod/CMakeLists.txt
 COPY gst_ichabod /var/lib/ichabod/gst_ichabod
 
 #
-# build barc binary
+# build ichabod binary
 RUN mkdir -p /var/lib/ichabod/build /var/lib/ichabod/bin && \
 cd /var/lib/ichabod/build && \
 cmake .. && \
 make && mv ichabod ../bin && cd .. && \
-rm -rf ichabod build CMakeLists.txt
+rm -rf ichabod gst_ichabod build CMakeLists.txt
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 ENV PATH=${PATH}:/var/lib/ichabod/bin

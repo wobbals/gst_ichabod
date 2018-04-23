@@ -3,7 +3,6 @@
 //  gst_ichabod
 //
 //  Created by Charley Robinson on 12/12/17.
-//  Copyright © 2017 Charley Robinson. All rights reserved.
 //
 
 #include <stdlib.h>
@@ -11,7 +10,8 @@
 #include <assert.h>
 #include <gst/gst.h>
 #include "ichabod_bin.h"
-#include "gsthorsemansrc.h"
+#include "screencast_src.h"
+#include "horseman.h"
 
 struct ichabod_bin_s {
   GMainLoop *loop;
@@ -43,6 +43,8 @@ struct ichabod_bin_s {
   GstElement* audio_raw_tee;
 
   struct rtp_relay_s* rtp_relay;
+  struct screencast_src_s* screencast_src;
+  struct horseman_s* horseman;
 };
 
 static int setup_bin(struct ichabod_bin_s* pthis);
@@ -54,30 +56,54 @@ static GstPadProbeReturn on_video_live
 static GstPadProbeReturn on_video_downstream
 (GstPad *pad, GstPadProbeInfo *info, gpointer p_user);
 
+static void on_horseman_cb(struct horseman_s* queue,
+                           struct horseman_msg_s* msg,
+                           void* p)
+{
+  struct ichabod_bin_s* pthis = (struct ichabod_bin_s*)p;
+  if (msg->eos) {
+    // We can send EOS to vsrc, but it doesn't seem to be enough to interrupt
+    // the audio src.
+    //screencast_src_send_eos(pthis->screencast_src);
+    // So instead, we just eos the whole pipeline.
+    gst_element_send_event(pthis->pipeline, gst_event_new_eos());
+  } else {
+    screencast_src_push_frame(pthis->screencast_src,
+                              msg->timestamp,
+                              msg->sz_data);
+  }
+}
+
 void ichabod_bin_alloc(struct ichabod_bin_s** ichabod_bin_out) {
   struct ichabod_bin_s* pthis = (struct ichabod_bin_s*)
   calloc(1, sizeof(struct ichabod_bin_s));
   g_mutex_init(&pthis->lock);
   pthis->audio_ready = FALSE;
   pthis->video_ready = FALSE;
+
+  struct horseman_config_s hconf;
+  horseman_alloc(&pthis->horseman);
+  hconf.p = pthis;
+  hconf.on_video_msg = on_horseman_cb;
+  horseman_load_config(pthis->horseman, &hconf);
+
   assert(0 == setup_bin(pthis));
   *ichabod_bin_out = pthis;
 }
 
-void ichabod_bin_free(struct ichabod_bin_s* ichabod_bin);
+void ichabod_bin_free(struct ichabod_bin_s* pthis) {
+
+  free(pthis);
+}
 
 int setup_bin(struct ichabod_bin_s* pthis) {
   /* Initialisation */
   if (!gst_is_initialized()) {
     gst_init(NULL, NULL);
   }
-  gst_plugin_register_static(GST_VERSION_MAJOR, GST_VERSION_MINOR,
-                             "horsemansrc", "horseman video source",
-                             horsemansrc_init,
-                             "0.0.1",
-                             "LGPL",
-                             "testsrc", "testsrc",
-                             "https://");
+
+  screencast_src_alloc(&pthis->screencast_src);
+  pthis->vsource = screencast_src_get_element(pthis->screencast_src);
 
   pthis->loop = g_main_loop_new(NULL, FALSE);
 
@@ -88,7 +114,6 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   pthis->afps = gst_element_factory_make("audiorate", "afps");
   pthis->aconv = gst_element_factory_make("audioconvert", "audio-converter");
   pthis->aenc = gst_element_factory_make("faac", "faaaaac");
-  pthis->vsource = gst_element_factory_make("horsemansrc", "horseman");
   pthis->vfps = gst_element_factory_make("videorate", "vfps");
   pthis->imgdec = gst_element_factory_make("jpegdec", "jpeg-decoder");
   pthis->venc = gst_element_factory_make("x264enc", "H.264 encoder");
@@ -122,6 +147,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 
   // configure source pad callbacks as a preroll workaround
   GstPad* vsrc_pad = gst_element_get_static_pad(pthis->vsource, "src");
+  g_assert(vsrc_pad);
   gst_pad_add_probe(vsrc_pad,
                     GST_PAD_PROBE_TYPE_BLOCK |
                     GST_PAD_PROBE_TYPE_SCHEDULING |
@@ -402,6 +428,9 @@ int ichabod_bin_start(struct ichabod_bin_s* pthis) {
     g_printerr("failed to start pipeline!\n");
     return -1;
   }
+
+  int horseman_started = horseman_start(pthis->horseman);
+  assert(!horseman_started);
 
   GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pthis->pipeline),
                             GST_DEBUG_GRAPH_SHOW_ALL,

@@ -52,7 +52,7 @@ gst_horsemansrc_create (GstPushSrc * src, GstBuffer ** buf);
 G_DEFINE_TYPE (GstHorsemanSrc, gst_horsemansrc, GST_TYPE_PUSH_SRC);
 
 /* Horseman */
-void on_horseman_cb(struct horseman_s* queue,
+static void on_horseman_cb(struct horseman_s* queue,
                     struct horseman_msg_s* msg,
                     void* p);
 
@@ -406,7 +406,7 @@ static GstBuffer* wrap_message(struct horseman_msg_s* msg) {
   return buf;
 }
 
-void on_horseman_cb(struct horseman_s* queue,
+static void on_horseman_cb(struct horseman_s* queue,
                     struct horseman_msg_s* msg,
                     void* p)
 {

@@ -44,6 +44,8 @@
 		D4C8947D1FD6031600485CA5 /* libzmq.5.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */; };
 		D4C8947F1FD6038800485CA5 /* libuv.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947E1FD6038800485CA5 /* libuv.1.dylib */; };
 		D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */ = {isa = PBXBuildFile; fileRef = D4C894831FD7225700485CA5 /* gsthorsemansrc.c */; };
+		D4D6BC2B20814D0500A64331 /* screencast_src.c in Sources */ = {isa = PBXBuildFile; fileRef = D4D6BC2A20814D0500A64331 /* screencast_src.c */; };
+		D4D6BC2D208155D600A64331 /* libgstapp-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4D6BC2C208155D500A64331 /* libgstapp-1.0.0.dylib */; };
 		D4ECAE7D1FD89794006A31C5 /* base64.c in Sources */ = {isa = PBXBuildFile; fileRef = D4ECAE7C1FD89794006A31C5 /* base64.c */; };
 /* End PBXBuildFile section */
 
@@ -105,6 +107,9 @@
 		D4C8947E1FD6038800485CA5 /* libuv.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libuv.1.dylib; path = ../../../../usr/local/Cellar/libuv/1.13.1/lib/libuv.1.dylib; sourceTree = "<group>"; };
 		D4C894831FD7225700485CA5 /* gsthorsemansrc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gsthorsemansrc.c; sourceTree = "<group>"; };
 		D4C894841FD7225700485CA5 /* gsthorsemansrc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gsthorsemansrc.h; sourceTree = "<group>"; };
+		D4D6BC2920814D0500A64331 /* screencast_src.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = screencast_src.h; sourceTree = "<group>"; };
+		D4D6BC2A20814D0500A64331 /* screencast_src.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = screencast_src.c; sourceTree = "<group>"; };
+		D4D6BC2C208155D500A64331 /* libgstapp-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstapp-1.0.0.dylib"; path = "../../../../usr/local/lib/libgstapp-1.0.0.dylib"; sourceTree = "<group>"; };
 		D4ECAE7B1FD89794006A31C5 /* base64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = base64.h; sourceTree = "<group>"; };
 		D4ECAE7C1FD89794006A31C5 /* base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = base64.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -114,6 +119,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D4D6BC2D208155D600A64331 /* libgstapp-1.0.0.dylib in Frameworks */,
 				D444E65B207C1FD200C671EC /* libgstsdp-1.0.0.dylib in Frameworks */,
 				D444E659207C1FBE00C671EC /* libgstwebrtc-1.0.0.dylib in Frameworks */,
 				D444E655207BC1D400C671EC /* libgio-2.0.0.dylib in Frameworks */,
@@ -193,6 +199,8 @@
 				D49AA40F206C2F5600F032C4 /* webrtc_control.c */,
 				D444E64E20768B3100C671EC /* rtp_relay.h */,
 				D444E64F20768B3100C671EC /* rtp_relay.c */,
+				D4D6BC2920814D0500A64331 /* screencast_src.h */,
+				D4D6BC2A20814D0500A64331 /* screencast_src.c */,
 			);
 			path = gst_ichabod;
 			sourceTree = "<group>";
@@ -200,6 +208,7 @@
 		D42E5A711F65735400C89691 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D4D6BC2C208155D500A64331 /* libgstapp-1.0.0.dylib */,
 				D444E654207BC1D300C671EC /* libgio-2.0.0.dylib */,
 				D4C36B7B206C3A420011C048 /* libgstsdp-1.0.0.dylib */,
 				D4C36B7C206C3A420011C048 /* libgstwebrtc-1.0.0.dylib */,
@@ -308,6 +317,7 @@
 			files = (
 				D444E65020768B3100C671EC /* rtp_relay.c in Sources */,
 				D444E658207C132500C671EC /* webrtc_relay.c in Sources */,
+				D4D6BC2B20814D0500A64331 /* screencast_src.c in Sources */,
 				D444E65C207C1FE000C671EC /* webrtc_control.c in Sources */,
 				D4226D2B1FF5746C007FA4D5 /* ichabod_sinks.c in Sources */,
 				D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */,

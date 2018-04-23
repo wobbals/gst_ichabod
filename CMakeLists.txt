@@ -19,6 +19,7 @@ pkg_check_modules (LIBGIO REQUIRED gio-2.0)
 pkg_check_modules (LIBGSTREAMERBASE REQUIRED gstreamer-base-1.0)
 pkg_check_modules (LIBGSTWEBRTC REQUIRED gstreamer-webrtc-1.0)
 pkg_check_modules (LIBGSTSDP REQUIRED gstreamer-sdp-1.0)
+pkg_check_modules (LIBGSTAPP REQUIRED gstreamer-app-1.0)
 
 # Curl is in like 4 different places on different OSes I've looked at.
 # lazily attempt to load it but don't sweat it if there's a failure.
@@ -50,6 +51,7 @@ link_libraries (${LIBGIO_LDFLAGS})
 link_libraries (${LIBGSTREAMERBASE_LDFLAGS})
 link_libraries (${LIBGSTWEBRTC_LDFLAGS})
 link_libraries (${LIBGSTSDP_LDFLAGS})
+link_libraries (${LIBGSTAPP_LDFLAGS})
 link_libraries (curl)
 
 include_directories (
@@ -63,6 +65,7 @@ include_directories (
   ${LIBGSTREAMERBASE_INCLUDE_DIRS}
   ${LIBGSTWEBRTC_INCLUDE_DIRS}
   ${LLIBGSTSDP_INCLUDE_DIRS}
+  ${LLIBGSTAPP_INCLUDE_DIRS}
 )
 
 # This comes at the end of all the linking commands issued above.

@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <zmq.h>
 #include <uv.h>
 #include <assert.h>
@@ -32,6 +33,8 @@ struct horseman_s {
   uv_loop_t* loop;
   uv_thread_t loop_thread;
   char is_running;
+
+  uint64_t start_time;
 };
 
 static void horseman_loop_main(void* p) {
@@ -140,7 +143,11 @@ static void dispatch_video_msg(uv_work_t* work) {
   struct msg_dispatch_s* async_msg = (struct msg_dispatch_s*) work->data;
   struct horseman_s* pthis = async_msg->horseman;
   struct horseman_msg_s* msg = async_msg->msg;
-  pthis->on_video_msg(pthis, msg, pthis->callback_p);
+  int64_t ts_nano = msg->timestamp * 1000000;
+  msg->timestamp = ts_nano;
+  if (msg->timestamp >= 0) {
+    pthis->on_video_msg(pthis, msg, pthis->callback_p);
+  }
 }
 
 static void after_video_msg(uv_work_t* work, int status) {
@@ -236,6 +243,13 @@ int horseman_start(struct horseman_s* pthis) {
   pthis->is_running = 1;
   int ret = uv_thread_create(&pthis->zmq_thread, horseman_zmq_main, pthis);
   int get = uv_thread_create(&pthis->loop_thread, horseman_loop_main, pthis);
+
+  struct timespec spec;
+  clock_gettime(CLOCK_REALTIME, &spec);
+  pthis->start_time = spec.tv_sec;
+  pthis->start_time *= 1000000000; // seconds to nanos
+  pthis->start_time += spec.tv_nsec; // add remaining nanos
+
   return ret | get;
 }
 
