@@ -14,17 +14,16 @@
 
 struct horseman_s;
 
-struct horseman_msg_s {
-  char* sz_data;
+struct horseman_frame_s {
+  const char* sz_data;
   double timestamp;
-  char* sz_sid;
   char eos;
 };
 
 struct horseman_config_s {
-  void (*on_video_msg)(struct horseman_s* queue,
-                       struct horseman_msg_s* msg,
-                       void* p);
+  void (*on_video_frame)(struct horseman_s* queue,
+                         struct horseman_frame_s* frame,
+                         void* p);
   void* p;
 };
 

@@ -53,7 +53,7 @@ G_DEFINE_TYPE (GstHorsemanSrc, gst_horsemansrc, GST_TYPE_PUSH_SRC);
 
 /* Horseman */
 static void on_horseman_cb(struct horseman_s* queue,
-                    struct horseman_msg_s* msg,
+                    struct horseman_frame_s* msg,
                     void* p);
 
 #pragma mark - Plugin Definitions
@@ -130,7 +130,7 @@ gst_horsemansrc_init (GstHorsemanSrc* pthis)
   struct horseman_config_s hconf;
   horseman_alloc(&pthis->horseman);
   hconf.p = pthis;
-  hconf.on_video_msg = on_horseman_cb;
+  hconf.on_video_frame = on_horseman_cb;
   horseman_load_config(pthis->horseman, &hconf);
   
   pthis->frame_queue = g_queue_new();
@@ -396,7 +396,7 @@ static GstFlowReturn gst_horsemansrc_create(GstPushSrc* src, GstBuffer ** buf)
 
 #pragma mark - Horseman
 
-static GstBuffer* wrap_message(struct horseman_msg_s* msg) {
+static GstBuffer* wrap_message(struct horseman_frame_s* msg) {
   size_t b_length = 0;
   const uint8_t* b_img =
   base64_decode((const unsigned char*)msg->sz_data,
@@ -407,7 +407,7 @@ static GstBuffer* wrap_message(struct horseman_msg_s* msg) {
 }
 
 static void on_horseman_cb(struct horseman_s* queue,
-                    struct horseman_msg_s* msg,
+                    struct horseman_frame_s* msg,
                     void* p)
 {
   GstHorsemanSrc* pthis = GST_HORSEMANSRC(p);

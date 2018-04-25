@@ -56,12 +56,12 @@ static GstPadProbeReturn on_video_live
 static GstPadProbeReturn on_video_downstream
 (GstPad *pad, GstPadProbeInfo *info, gpointer p_user);
 
-static void on_horseman_cb(struct horseman_s* queue,
-                           struct horseman_msg_s* msg,
-                           void* p)
+static void on_horseman_video_frame(struct horseman_s* queue,
+                                    struct horseman_frame_s* frame,
+                                    void* p)
 {
   struct ichabod_bin_s* pthis = (struct ichabod_bin_s*)p;
-  if (msg->eos) {
+  if (frame->eos) {
     // We can send EOS to vsrc, but it doesn't seem to be enough to interrupt
     // the audio src.
     //screencast_src_send_eos(pthis->screencast_src);
@@ -69,8 +69,8 @@ static void on_horseman_cb(struct horseman_s* queue,
     gst_element_send_event(pthis->pipeline, gst_event_new_eos());
   } else {
     screencast_src_push_frame(pthis->screencast_src,
-                              msg->timestamp,
-                              msg->sz_data);
+                              frame->timestamp,
+                              frame->sz_data);
   }
 }
 
@@ -84,7 +84,7 @@ void ichabod_bin_alloc(struct ichabod_bin_s** ichabod_bin_out) {
   struct horseman_config_s hconf;
   horseman_alloc(&pthis->horseman);
   hconf.p = pthis;
-  hconf.on_video_msg = on_horseman_cb;
+  hconf.on_video_frame = on_horseman_video_frame;
   horseman_load_config(pthis->horseman, &hconf);
 
   assert(0 == setup_bin(pthis));

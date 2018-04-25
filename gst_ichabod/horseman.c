@@ -15,9 +15,28 @@
 #include <assert.h>
 #include "horseman.h"
 
+#define PUSH_SOCKET_ADDR "ipc:///tmp/ichabod-push"
+#define PULL_SOCKET_ADDR "ipc:///tmp/horseman-push"
+
+#define MESSAGE_TYPE_FRAME "frame"
+
+struct envelope_s {
+  uint8_t* sz_data;
+  struct envelope_s* next;
+};
+
+struct msg_dispatch_s {
+  uv_work_t work;
+  struct horseman_s* horseman;
+  void* data;
+  void (*callback_f)(struct horseman_s* horseman, void* data);
+  void (*after_callback_f)(void* data);
+};
+
 struct horseman_s {
   void* zmq_ctx;
-  void* screencast_socket;
+  void* pull_socket;
+  void* push_socket;
   char is_interrupted;
   uv_thread_t zmq_thread;
   
@@ -25,24 +44,64 @@ struct horseman_s {
   uv_mutex_t work_lock;
   int64_t work_count;
 
-  void (*on_video_msg)(struct horseman_s* queue,
-                       struct horseman_msg_s* msg, void* p);
+  void (*on_video_msg)(struct horseman_s* horseman,
+                       struct horseman_frame_s* frame, void* p);
   void* callback_p;
 
   // Separate runloop for dispatching callbacks.
   uv_loop_t* loop;
   uv_thread_t loop_thread;
   char is_running;
-
-  uint64_t start_time;
 };
+
+static void envelope_free(struct envelope_s* p) {
+  while (p) {
+    free(p->sz_data);
+    p->sz_data = NULL;
+    struct envelope_s* q = p;
+    p = p->next;
+    free(q);
+  }
+}
+
+static void video_frame_free(void* p) {
+  struct horseman_frame_s* frame = (struct horseman_frame_s*)p;
+  if (frame->sz_data) {
+    free((void*)frame->sz_data);
+    frame->sz_data = NULL;
+  }
+  free(frame);
+}
+
+static void async_video_frame_callback(struct horseman_s* pthis, void* data)
+{
+  struct horseman_frame_s* frame = (struct horseman_frame_s*)data;
+  pthis->on_video_msg(pthis, frame, pthis->callback_p);
+}
+
+// Warning: to prevent excess copying, parser consumes and frees envelope
+static struct horseman_frame_s* envelope_parse_frame(struct envelope_s** p) {
+  struct horseman_frame_s* f = (struct horseman_frame_s*)
+  calloc(1, sizeof(struct horseman_frame_s));
+  if (!strcmp("EOS", (const char*)(*p)->sz_data)) {
+    f->eos = 1;
+  } else {
+    f->sz_data = (const char*)(*p)->sz_data;
+    // transfer ownership of frame data string
+    (*p)->sz_data = NULL;
+    f->timestamp = atof((char*)(*p)->next->sz_data);
+  }
+  envelope_free(*p);
+  *p = NULL;
+  return f;
+}
 
 static void horseman_loop_main(void* p) {
   struct horseman_s* pthis = (struct horseman_s*)p;
   int ret = 0;
   while (pthis->is_running && 0 == ret) {
     ret = uv_run(pthis->loop, UV_RUN_DEFAULT);
-    // todo: why is this not running on a poll?
+    // TODO: should this be a poll instead of a busywait?
     usleep(1000);
   }
   printf("horseman: exiting worker loop\n");
@@ -68,30 +127,27 @@ int64_t get_work_count(struct horseman_s* pthis) {
   return ret;
 }
 
-static void horseman_msg_free(struct horseman_msg_s* msg) {
-  if (msg->sz_data) {
-    free(msg->sz_data);
+static void issue_callback(uv_work_t* work) {
+  struct msg_dispatch_s* async_msg = (struct msg_dispatch_s*) work->data;
+  struct horseman_s* pthis = async_msg->horseman;
+  if (async_msg->callback_f) {
+    async_msg->callback_f(pthis, async_msg->data);
   }
-  if (msg->sz_sid) {
-    free(msg->sz_sid);
-  }
-  free(msg);
 }
 
-static int receive_message(void* socket, struct horseman_msg_s* msg,
+static void after_issue_callback(uv_work_t* work, int status) {
+  struct msg_dispatch_s* msg = (struct msg_dispatch_s*) work->data;
+  msg->after_callback_f(msg->data);
+  decrement_work_count(msg->horseman);
+}
+
+static int receive_message(void* socket, struct envelope_s** msg_p,
                            char* got_message)
 {
+  struct envelope_s* root_env = (struct envelope_s*)
+  calloc(1, sizeof(struct envelope_s));
+  struct envelope_s* env_p = root_env;
   int ret;
-  if (msg->sz_data) {
-    free(msg->sz_data);
-  }
-  if (msg->sz_sid) {
-    free(msg->sz_sid);
-  }
-  if (msg->eos) {
-    msg->eos = 0;
-  }
-  memset(msg, 0, sizeof(struct horseman_msg_s));
   while (1) {
     zmq_msg_t message;
     ret = zmq_msg_init (&message);
@@ -99,91 +155,83 @@ static int receive_message(void* socket, struct horseman_msg_s* msg,
     if (ret < 0 && EAGAIN == errno) {
       *got_message = 0;
       zmq_msg_close(&message);
-      return 0;
+      break;
     }
     *got_message = 1;
-    // Process the message frame
+
+    // Copy message frame(s) to C string for easier downstream handling (atof)
     uint8_t* sz_msg = (uint8_t*)malloc(zmq_msg_size(&message) + 1);
     memcpy(sz_msg, zmq_msg_data(&message), zmq_msg_size(&message));
     sz_msg[zmq_msg_size(&message)] = '\0';
 
-    if (!msg->sz_data) {
-      msg->sz_data = (char*)sz_msg;
-    } else if (!msg->timestamp) {
-      msg->timestamp = atof((char*)sz_msg);
-      free(sz_msg);
-    } else if (!msg->sz_sid) {
-      msg->sz_sid = (char*)sz_msg;
-    } else {
-      printf("unknown extra message part received. freeing.");
-      free(sz_msg);
+    if (env_p->sz_data) {
+      env_p->next = (struct envelope_s*) calloc(1, sizeof(struct envelope_s));
+      env_p = env_p->next;
     }
-    if (!strcmp("EOS", msg->sz_data)) {
-      printf("horseman: received EOS\n");
-      free(msg->sz_data);
-      msg->sz_data = NULL;
-      msg->eos = 1;
-      break;
-    }
-    
-    zmq_msg_close (&message);
-    if (!zmq_msg_more (&message))
+    env_p->sz_data = (uint8_t*)sz_msg;
+
+    zmq_msg_close(&message);
+    if (!zmq_msg_more(&message))
       break;      //  Last message frame
   }
+
+  if (*got_message) {
+    *msg_p = root_env;
+  } else {
+    envelope_free(root_env);
+    *msg_p = NULL;
+  }
+
   return 0;
 }
 
-struct msg_dispatch_s {
-  uv_work_t work;
-  struct horseman_msg_s* msg;
-  struct horseman_s* horseman;
-};
+static void parse_envelope(struct horseman_s* pthis, struct envelope_s* msg) {
+  int ret = -1;
+  struct msg_dispatch_s* async_msg = (struct msg_dispatch_s*)
+  calloc(1, sizeof(struct msg_dispatch_s));
+  async_msg->horseman = pthis;
+  async_msg->work.data = async_msg;
 
-static void dispatch_video_msg(uv_work_t* work) {
-  struct msg_dispatch_s* async_msg = (struct msg_dispatch_s*) work->data;
-  struct horseman_s* pthis = async_msg->horseman;
-  struct horseman_msg_s* msg = async_msg->msg;
-  int64_t ts_nano = msg->timestamp * 1000000;
-  msg->timestamp = ts_nano;
-  if (msg->timestamp >= 0) {
-    pthis->on_video_msg(pthis, msg, pthis->callback_p);
+  if (!strcmp(MESSAGE_TYPE_FRAME, (char*)msg->sz_data)) {
+    struct horseman_frame_s* frame = envelope_parse_frame(&msg->next);
+    envelope_free(msg);
+    if (frame->eos) {
+      // let the async callback post, but later break the main receiver loop
+      pthis->is_interrupted = 1;
+    }
+    async_msg->data = frame;
+    async_msg->callback_f = async_video_frame_callback;
+    async_msg->after_callback_f = video_frame_free;
+  } else {
+    free(async_msg);
+    async_msg = NULL;
   }
-}
 
-static void after_video_msg(uv_work_t* work, int status) {
-  struct msg_dispatch_s* msg = (struct msg_dispatch_s*) work->data;
-  decrement_work_count(msg->horseman);
-  horseman_msg_free(msg->msg);
-  free(msg);
-}
-
-static int receive_screencast(struct horseman_s* pthis, char* got_message) {
-  struct horseman_msg_s* msg = calloc(1, sizeof(struct horseman_msg_s));
-  // wait for zmq message
-  int ret = receive_message(pthis->screencast_socket, msg, got_message);
-  // process message
-  if (ret) {
-    printf("trouble? %d %d\n", ret, errno);
-  } else if (*got_message && msg->eos) {
-    // let the dispatch_video_msg job post, but break the main receiver loop
-    pthis->is_interrupted = 1;
-  }
-  if (*got_message) {
-    printf("received screencast  ts=%f\n",
-           msg->timestamp);
-
-    struct msg_dispatch_s* async_msg = (struct msg_dispatch_s*)
-    calloc(1, sizeof(struct msg_dispatch_s));
-    async_msg->msg = msg;
-    async_msg->horseman = pthis;
-    async_msg->work.data = async_msg;
+  if (async_msg) {
     increment_work_count(pthis);
     ret = uv_queue_work(pthis->loop, &async_msg->work,
-                        dispatch_video_msg, after_video_msg);
-    if (ret) {
-      // job rejected. don't wait for after_msg to fire
-      decrement_work_count(pthis);
-    }
+                        issue_callback, after_issue_callback);
+  }
+
+  if (async_msg && ret) {
+    // job rejected. don't wait for after_msg to fire
+    decrement_work_count(pthis);
+    // force the free function for this callback, since it won't run async
+    async_msg->after_callback_f(async_msg->data);
+  }
+}
+
+static int process_next_message(struct horseman_s* pthis) {
+  char got_message = 0;
+  struct envelope_s* msg = NULL;
+  // wait for zmq message
+  int ret = receive_message(pthis->pull_socket, &msg, &got_message);
+  // process message
+  if (ret) {
+    printf("horseman: trouble in zmq? %d %d\n", ret, errno);
+  }
+  if (got_message) {
+    parse_envelope(pthis, msg);
   }
   return ret;
 }
@@ -193,23 +241,22 @@ static void horseman_zmq_main(void* p) {
   printf("media queue is online %p\n", p);
   struct horseman_s* pthis = (struct horseman_s*)p;
   int t = 10;
-  ret = zmq_connect(pthis->screencast_socket, "ipc:///tmp/ichabod-screencast");
+  ret = zmq_connect(pthis->pull_socket, PULL_SOCKET_ADDR);
   if (ret) {
     printf("failed to connect to media queue socket. errno %d\n", errno);
     return;
   }
-  ret = zmq_setsockopt(pthis->screencast_socket, ZMQ_RCVTIMEO, &t, sizeof(int));
+  ret = zmq_setsockopt(pthis->pull_socket, ZMQ_RCVTIMEO, &t, sizeof(int));
   while (!pthis->is_interrupted) {
-    char got_screencast = 0;
-    ret = receive_screencast(pthis, &got_screencast);
+    ret = process_next_message(pthis);
   }
-  zmq_close(pthis->screencast_socket);
+  zmq_close(pthis->pull_socket);
 }
 
 void horseman_load_config(struct horseman_s* pthis,
                              struct horseman_config_s* config)
 {
-  pthis->on_video_msg = config->on_video_msg;
+  pthis->on_video_msg = config->on_video_frame;
   pthis->callback_p = config->p;
 }
 
@@ -217,7 +264,7 @@ int horseman_alloc(struct horseman_s** queue) {
   struct horseman_s* pthis =
   (struct horseman_s*)calloc(1, sizeof(struct horseman_s));
   pthis->zmq_ctx = zmq_ctx_new();
-  pthis->screencast_socket = zmq_socket(pthis->zmq_ctx, ZMQ_PULL);
+  pthis->pull_socket = zmq_socket(pthis->zmq_ctx, ZMQ_PULL);
   uv_mutex_init(&pthis->work_lock);
   
   pthis->loop = (uv_loop_t*) malloc(sizeof(uv_loop_t));
@@ -228,7 +275,6 @@ int horseman_alloc(struct horseman_s** queue) {
 }
 
 void horseman_free(struct horseman_s* pthis) {
-  int ret;
   pthis->is_running = 0;
   uv_stop(pthis->loop);
   free(pthis->loop);
@@ -243,13 +289,6 @@ int horseman_start(struct horseman_s* pthis) {
   pthis->is_running = 1;
   int ret = uv_thread_create(&pthis->zmq_thread, horseman_zmq_main, pthis);
   int get = uv_thread_create(&pthis->loop_thread, horseman_loop_main, pthis);
-
-  struct timespec spec;
-  clock_gettime(CLOCK_REALTIME, &spec);
-  pthis->start_time = spec.tv_sec;
-  pthis->start_time *= 1000000000; // seconds to nanos
-  pthis->start_time += spec.tv_nsec; // add remaining nanos
-
   return ret | get;
 }
 
