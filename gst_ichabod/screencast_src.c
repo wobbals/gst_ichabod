@@ -76,7 +76,10 @@ void screencast_src_push_frame(struct screencast_src_s* pthis,
     g_print("screencastsrc: skip frame: no master clock to sync to\n");
     return;
   }
+
+  uv_mutex_lock(&pthis->lock);
   if (master_clock != gst_clock_get_master(pthis->wall_clock)) {
+    g_print("screencastsrc: new master clock detected.\n");
     gst_clock_set_master(pthis->wall_clock, master_clock);
     // one-shot bootleg calibration to get timestamps adjusted immediately
     GstClockTime internal = gst_clock_get_internal_time(pthis->wall_clock);
@@ -84,6 +87,7 @@ void screencast_src_push_frame(struct screencast_src_s* pthis,
     // just assume the clocks run at the same speed for now (should be close)
     gst_clock_set_calibration(pthis->wall_clock, internal, external, 1, 1);
   }
+  uv_mutex_unlock(&pthis->lock);
 
   // base64 decode
   size_t b_length = 0;
@@ -93,6 +97,9 @@ void screencast_src_push_frame(struct screencast_src_s* pthis,
                 &b_length);
   // create buffer
   GstBuffer* buf = gst_buffer_new_wrapped((gpointer)b_img, b_length);
+
+  // input timestamp is in millis; convert before adjusting to GstClock
+  timestamp *= GST_MSECOND;
 
   GstClockTime ts = gst_wall_clock_adjust_safe(pthis->wall_clock, timestamp);
   buf->dts = ts;

@@ -5,6 +5,7 @@
 //  Created by Charley Robinson on 6/1/17.
 //
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -19,6 +20,10 @@
 #define PULL_SOCKET_ADDR "ipc:///tmp/horseman-push"
 
 #define MESSAGE_TYPE_FRAME "frame"
+#define MESSAGE_TYPE_OUTPUT "output"
+
+#define OUTPUT_TYPE_FILE "file"
+#define OUTPUT_TYPE_RTMP "rtmp"
 
 struct envelope_s {
   uint8_t* sz_data;
@@ -44,8 +49,10 @@ struct horseman_s {
   uv_mutex_t work_lock;
   int64_t work_count;
 
-  void (*on_video_msg)(struct horseman_s* horseman,
+  void (*on_video_frame)(struct horseman_s* horseman,
                        struct horseman_frame_s* frame, void* p);
+  void (*on_output_request)(struct horseman_s* horseman,
+                            struct horseman_output_s* output, void* p);
   void* callback_p;
 
   // Separate runloop for dispatching callbacks.
@@ -73,27 +80,64 @@ static void video_frame_free(void* p) {
   free(frame);
 }
 
-static void async_video_frame_callback(struct horseman_s* pthis, void* data)
-{
-  struct horseman_frame_s* frame = (struct horseman_frame_s*)data;
-  pthis->on_video_msg(pthis, frame, pthis->callback_p);
+static void output_free(void* p) {
+  struct horseman_output_s* output = (struct horseman_output_s*)p;
+  if (output->location) {
+    free((void*)output->location);
+  }
+  free(output);
 }
 
-// Warning: to prevent excess copying, parser consumes and frees envelope
+static void async_video_frame_callback(struct horseman_s* pthis, void* data) {
+  struct horseman_frame_s* frame = (struct horseman_frame_s*)data;
+  pthis->on_video_frame(pthis, frame, pthis->callback_p);
+}
+
+static void async_output_callback(struct horseman_s* pthis, void* data) {
+  struct horseman_output_s* output = (struct horseman_output_s*)data;
+  pthis->on_output_request(pthis, output, pthis->callback_p);
+}
+
+// Warning: to prevent excess copying, parsers consume and free the envelope
 static struct horseman_frame_s* envelope_parse_frame(struct envelope_s** p) {
+  assert(*p);
   struct horseman_frame_s* f = (struct horseman_frame_s*)
   calloc(1, sizeof(struct horseman_frame_s));
   if (!strcmp("EOS", (const char*)(*p)->sz_data)) {
     f->eos = 1;
   } else {
+    assert((*p)->sz_data);
     f->sz_data = (const char*)(*p)->sz_data;
     // transfer ownership of frame data string
     (*p)->sz_data = NULL;
+    assert((*p)->next);
+    assert((*p)->next->sz_data);
     f->timestamp = atof((char*)(*p)->next->sz_data);
   }
   envelope_free(*p);
   *p = NULL;
   return f;
+}
+
+static struct horseman_output_s* envelope_parse_output(struct envelope_s** p) {
+  assert(*p);
+  struct horseman_output_s* output = (struct horseman_output_s*)
+  calloc(1, sizeof(struct horseman_output_s));
+  assert((*p)->sz_data);
+  const char* sz_output_type = (const char*)(*p)->sz_data;
+  if (!strcmp(OUTPUT_TYPE_FILE, sz_output_type)) {
+    output->output_type = horseman_output_type_file;
+  } else if (!strcmp(OUTPUT_TYPE_RTMP, sz_output_type)) {
+    output->output_type = horseman_output_type_rtmp;
+  }
+  (*p)->sz_data = NULL;
+  assert((*p)->next);
+  assert((*p)->next->sz_data);
+  output->location = (const char*)(*p)->next->sz_data;
+  (*p)->next->sz_data = NULL;
+  envelope_free(*p);
+  *p = NULL;
+  return output;
 }
 
 static void horseman_loop_main(void* p) {
@@ -194,7 +238,6 @@ static void parse_envelope(struct horseman_s* pthis, struct envelope_s* msg) {
 
   if (!strcmp(MESSAGE_TYPE_FRAME, (char*)msg->sz_data)) {
     struct horseman_frame_s* frame = envelope_parse_frame(&msg->next);
-    envelope_free(msg);
     if (frame->eos) {
       // let the async callback post, but later break the main receiver loop
       pthis->is_interrupted = 1;
@@ -202,6 +245,11 @@ static void parse_envelope(struct horseman_s* pthis, struct envelope_s* msg) {
     async_msg->data = frame;
     async_msg->callback_f = async_video_frame_callback;
     async_msg->after_callback_f = video_frame_free;
+  } else if (!strcmp(MESSAGE_TYPE_OUTPUT, (char*)msg->sz_data)) {
+    struct horseman_output_s* output = envelope_parse_output(&msg->next);
+    async_msg->data = output;
+    async_msg->callback_f = async_output_callback;
+    async_msg->after_callback_f = output_free;
   } else {
     free(async_msg);
     async_msg = NULL;
@@ -232,6 +280,7 @@ static int process_next_message(struct horseman_s* pthis) {
   }
   if (got_message) {
     parse_envelope(pthis, msg);
+    envelope_free(msg);
   }
   return ret;
 }
@@ -256,7 +305,8 @@ static void horseman_zmq_main(void* p) {
 void horseman_load_config(struct horseman_s* pthis,
                              struct horseman_config_s* config)
 {
-  pthis->on_video_msg = config->on_video_frame;
+  pthis->on_video_frame = config->on_video_frame;
+  pthis->on_output_request = config->on_output_request;
   pthis->callback_p = config->p;
 }
 

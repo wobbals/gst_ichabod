@@ -145,17 +145,15 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (!output_path) {
-    output_path = "output.mp4";
-  }
-
   struct ichabod_bin_s* ichabod_bin;
   ichabod_bin_alloc(&ichabod_bin);
   int ret;
-  ret = ichabod_attach_file(ichabod_bin, output_path);
+
+  if (output_path) {
+    ret = ichabod_attach_file(ichabod_bin, output_path);
+  }
 
   if (broadcast_url) {
-    g_print("attach broadcast url %s\n", broadcast_url);
     ret = ichabod_attach_rtmp(ichabod_bin, broadcast_url);
   }
 

@@ -12,6 +12,7 @@
 #include "ichabod_bin.h"
 #include "screencast_src.h"
 #include "horseman.h"
+#include "ichabod_sinks.h"
 
 struct ichabod_bin_s {
   GMainLoop *loop;
@@ -42,6 +43,9 @@ struct ichabod_bin_s {
   GstElement* audio_enc_tee;
   GstElement* audio_raw_tee;
 
+  GstElement* fake_mux_vsink;
+  GstElement* fake_mux_asink;
+
   struct rtp_relay_s* rtp_relay;
   struct screencast_src_s* screencast_src;
   struct horseman_s* horseman;
@@ -62,6 +66,7 @@ static void on_horseman_video_frame(struct horseman_s* queue,
 {
   struct ichabod_bin_s* pthis = (struct ichabod_bin_s*)p;
   if (frame->eos) {
+    g_print("ichabod_bin: sending pipeline end-of-stream\n");
     // We can send EOS to vsrc, but it doesn't seem to be enough to interrupt
     // the audio src.
     //screencast_src_send_eos(pthis->screencast_src);
@@ -72,6 +77,36 @@ static void on_horseman_video_frame(struct horseman_s* queue,
                               frame->timestamp,
                               frame->sz_data);
   }
+}
+
+static void on_horseman_output_request(struct horseman_s* horseman,
+                                       struct horseman_output_s* output,
+                                       void* p)
+{
+  g_print("ichabod_bin: received output request type %d\n",
+          output->output_type);
+  struct ichabod_bin_s* pthis = (struct ichabod_bin_s*)p;
+  gboolean result = gst_element_set_state(pthis->pipeline, GST_STATE_PAUSED);
+  g_assert(result);
+  switch (output->output_type) {
+    case horseman_output_type_file:
+      ichabod_attach_file(pthis, output->location);
+      break;
+    case horseman_output_type_rtmp:
+      ichabod_attach_rtmp(pthis, output->location);
+      break;
+    default:
+      g_print("ichabod_bin: WARNING: unknown output type request\n");
+      break;
+  }
+
+  result = gst_element_set_state(pthis->pipeline, GST_STATE_PLAYING);
+  g_assert(result);
+
+  GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pthis->pipeline),
+                            GST_DEBUG_GRAPH_SHOW_ALL,
+                            "pipeline");
+
 }
 
 void ichabod_bin_alloc(struct ichabod_bin_s** ichabod_bin_out) {
@@ -85,6 +120,7 @@ void ichabod_bin_alloc(struct ichabod_bin_s** ichabod_bin_out) {
   horseman_alloc(&pthis->horseman);
   hconf.p = pthis;
   hconf.on_video_frame = on_horseman_video_frame;
+  hconf.on_output_request = on_horseman_output_request;
   horseman_load_config(pthis->horseman, &hconf);
 
   assert(0 == setup_bin(pthis));
@@ -109,19 +145,21 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 
   /* Create gstreamer elements */
   pthis->pipeline = gst_pipeline_new("ichabod");
-  pthis->mqueue_src = gst_element_factory_make("multiqueue", "mqueue");
-  pthis->asource = gst_element_factory_make("pulsesrc", "asrc-pulse");
-  pthis->afps = gst_element_factory_make("audiorate", "afps");
-  pthis->aconv = gst_element_factory_make("audioconvert", "audio-converter");
+  pthis->mqueue_src = gst_element_factory_make("multiqueue", NULL);
+  pthis->asource = gst_element_factory_make("pulsesrc", NULL);
+  pthis->afps = gst_element_factory_make("audiorate", NULL);
+  pthis->aconv = gst_element_factory_make("audioconvert", NULL);
   pthis->aenc = gst_element_factory_make("faac", "faaaaac");
-  pthis->vfps = gst_element_factory_make("videorate", "vfps");
-  pthis->imgdec = gst_element_factory_make("jpegdec", "jpeg-decoder");
-  pthis->venc = gst_element_factory_make("x264enc", "H.264 encoder");
-  pthis->audio_out_valve = gst_element_factory_make("valve", "avalve");
-  pthis->video_out_valve = gst_element_factory_make("valve", "vvalve");
-  pthis->audio_enc_tee = gst_element_factory_make("tee", "aenctee");
-  pthis->audio_raw_tee = gst_element_factory_make("tee", "arawtee");
-  pthis->video_tee = gst_element_factory_make("tee", "vtee");
+  pthis->vfps = gst_element_factory_make("videorate", NULL);
+  pthis->imgdec = gst_element_factory_make("jpegdec", NULL);
+  pthis->venc = gst_element_factory_make("x264enc", NULL);
+  pthis->audio_out_valve = gst_element_factory_make("valve", NULL);
+  pthis->video_out_valve = gst_element_factory_make("valve", NULL);
+  pthis->audio_enc_tee = gst_element_factory_make("tee", NULL);
+  pthis->audio_raw_tee = gst_element_factory_make("tee", NULL);
+  pthis->video_tee = gst_element_factory_make("tee", NULL);
+  pthis->fake_mux_asink = gst_element_factory_make("fakesink", NULL);
+  pthis->fake_mux_vsink = gst_element_factory_make("fakesink", NULL);
 
   if (!pthis->pipeline) {
     g_printerr("pipeline alloc failure.\n");
@@ -174,12 +212,15 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 
   // give plenty of buffer tolerance to the audio source, which can get finicky
   // when the pipeline runs slowly. (read: nearly always)
-  g_object_set(G_OBJECT(pthis->asource), "buffer-time", 100000, NULL);
+  g_object_set(G_OBJECT(pthis->asource), "buffer-time", 10000000, NULL);
 
   // configure video encoder
   // TODO: switch encoding settings to bitrate target if RTMP sink is attached.
   // presets indexed from x264.h x264_preset_names - ** INDEXING STARTS AT 1 **
   g_object_set(G_OBJECT(pthis->venc), "speed-preset", 1, NULL);
+  // experiment: fixed keyframe rate for rtmp streams
+  g_object_set(G_OBJECT(pthis->venc), "key-int-max", 60, NULL);
+  //g_object_set(G_OBJECT(pthis->venc), "tune", 4, NULL);
   // pass values indexed from gstx264enc.c. Not sure how to reference the actual
   // object, so for testing purposes, 5=crf, 4=qp, 0=cbr. :-|
   g_object_set(G_OBJECT(pthis->venc), "pass", 5, NULL);
@@ -208,8 +249,16 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 
   // start with audio and video flows blocked from multiplexer, to allow full
   // pipeline pre-roll before writing to file
-  g_object_set(G_OBJECT(pthis->video_out_valve), "drop", TRUE, NULL);
-  g_object_set(G_OBJECT(pthis->audio_out_valve), "drop", TRUE, NULL);
+//  g_object_set(G_OBJECT(pthis->video_out_valve), "drop", TRUE, NULL);
+//  g_object_set(G_OBJECT(pthis->audio_out_valve), "drop", TRUE, NULL);
+
+  // Allow output sinks to run even when we have no outputs attached
+//  g_object_set(G_OBJECT(pthis->audio_enc_tee), "allow-not-linked", TRUE, NULL);
+//  g_object_set(G_OBJECT(pthis->video_tee), "allow-not-linked", TRUE, NULL);
+//  g_object_set(G_OBJECT(pthis->fake_mux_vsink), "sync", FALSE, NULL);
+//  g_object_set(G_OBJECT(pthis->fake_mux_vsink), "async", FALSE, NULL);
+//  g_object_set(G_OBJECT(pthis->fake_mux_asink), "sync", FALSE, NULL);
+//  g_object_set(G_OBJECT(pthis->fake_mux_asink), "async", FALSE, NULL);
 
   /* we add a message handler */
   GstBus* bus = gst_pipeline_get_bus(GST_PIPELINE(pthis->pipeline));
@@ -232,6 +281,8 @@ int setup_bin(struct ichabod_bin_s* pthis) {
                    pthis->video_out_valve,
                    pthis->audio_enc_tee,
                    pthis->video_tee,
+                   pthis->fake_mux_asink,
+                   pthis->fake_mux_vsink,
                    NULL);
 
   // link video element chain
@@ -289,11 +340,19 @@ int setup_bin(struct ichabod_bin_s* pthis) {
                                  pthis->audio_enc_tee,
                                  NULL);
 
+//  GstPad* fake_video_mux_sink =
+//  gst_element_get_static_pad(pthis->fake_mux_vsink, "sink");
+//  GstPad* fake_audio_mux_sink =
+//  gst_element_get_static_pad(pthis->fake_mux_asink, "sink");
+//  ichabod_bin_attach_mux_sink_pad(pthis, fake_audio_mux_sink,
+//                                  fake_video_mux_sink);
+  gst_bin_sync_children_states(GST_BIN(pthis->pipeline));
+
   gst_caps_unref(acaps);
   acaps = NULL;
 
   // set a high pipeline latency tolerance because reasons
-  //gst_pipeline_set_latency(GST_PIPELINE(pthis->pipeline), 10 * GST_SECOND);
+  gst_pipeline_set_latency(GST_PIPELINE(pthis->pipeline), 10 * GST_SECOND);
   return 0;
 }
 
@@ -455,10 +514,14 @@ int ichabod_bin_start(struct ichabod_bin_s* pthis) {
 
 int ichabod_bin_stop(struct ichabod_bin_s* ichabod_bin);
 
+/* Even internally, this should be preferred over gst_bin_add for any
+ * changes that could happen after preflight has finished. Without the sync
+ * call, dynamic pipeline changes will not take effect.
+ */
 int ichabod_bin_add_element(struct ichabod_bin_s* bin, GstElement* element) {
-  // Consider making a virtual pad for the whole bin rather than forcing
-  // downstream to add elements to this pipeline in order to extend it.
-  return !gst_bin_add(GST_BIN(bin->pipeline), element);
+  gboolean ret = gst_bin_add(GST_BIN(bin->pipeline), element);
+  ret = gst_element_sync_state_with_parent(element);
+  return ret;
 }
 
 int ichabod_bin_attach_mux_sink_pad
@@ -473,7 +536,7 @@ int ichabod_bin_attach_mux_sink_pad
   char queue_name[32];
   sprintf(queue_name, "mqueue_%s", pad_name);
   GstElement* mqueue = gst_element_factory_make("multiqueue", queue_name);
-  gst_bin_add(GST_BIN(pthis->pipeline), mqueue);
+  ichabod_bin_add_element(pthis, mqueue);
   g_object_set(G_OBJECT(mqueue), "max-size-time", 50 * GST_MSECOND, NULL);
   g_free(pad_name);
 
@@ -511,7 +574,7 @@ GstPad* ichabod_bin_create_audio_src(struct ichabod_bin_s* pthis, GstCaps* caps)
   sprintf(queue_name, "arawqueue_%s", pad_name);
   GstElement* queue = gst_element_factory_make("queue", queue_name);
   g_object_set(G_OBJECT(queue), "max-size-time", 10 * GST_SECOND, NULL);
-  gst_bin_add(GST_BIN(pthis->pipeline), queue);
+  ichabod_bin_add_element(pthis, queue);
   g_free(pad_name);
 
   GstPad* queue_sink_pad = gst_element_get_static_pad(queue, "sink");
@@ -540,7 +603,7 @@ GstPad* ichabod_bin_create_video_src(struct ichabod_bin_s* pthis, GstCaps* caps)
   sprintf(queue_name, "vencqueue_%s", pad_name);
   GstElement* queue = gst_element_factory_make("queue", queue_name);
   g_object_set(G_OBJECT(queue), "max-size-time", 10 * GST_SECOND, NULL);
-  gst_bin_add(GST_BIN(pthis->pipeline), queue);
+  ichabod_bin_add_element(pthis, queue);
   g_free(pad_name);
 
   GstPad* queue_sink_pad = gst_element_get_static_pad(queue, "sink");
@@ -556,7 +619,6 @@ void ichabod_bin_set_rtp_relay(struct ichabod_bin_s* pthis,
 {
   pthis->rtp_relay = rtp_relay;
   GstElement* relay_element = GST_ELEMENT(rtp_relay_get_bin(rtp_relay));
-  gboolean ret = gst_bin_add(GST_BIN(pthis->pipeline), relay_element);
+  gboolean ret = ichabod_bin_add_element(pthis, relay_element);
   g_assert(ret);
-  gst_element_sync_state_with_parent(relay_element);
 }

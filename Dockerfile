@@ -98,7 +98,7 @@ COPY gst_ichabod /var/lib/ichabod/gst_ichabod
 RUN mkdir -p /var/lib/ichabod/build /var/lib/ichabod/bin && \
 cd /var/lib/ichabod/build && \
 cmake .. && \
-make && mv ichabod ../bin && cd .. && \
+make -j$(nproc) && mv ichabod ../bin && cd .. && \
 rm -rf ichabod gst_ichabod build CMakeLists.txt
 
 ENV LD_LIBRARY_PATH=/usr/local/lib

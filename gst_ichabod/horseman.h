@@ -20,10 +20,23 @@ struct horseman_frame_s {
   char eos;
 };
 
+enum horseman_output_type {
+  horseman_output_type_unknown = 0,
+  horseman_output_type_file,
+  horseman_output_type_rtmp
+};
+
+struct horseman_output_s {
+  enum horseman_output_type output_type;
+  const char* location;
+};
+
 struct horseman_config_s {
   void (*on_video_frame)(struct horseman_s* queue,
                          struct horseman_frame_s* frame,
                          void* p);
+  void (*on_output_request)(struct horseman_s* horseman,
+                            struct horseman_output_s* output, void* p);
   void* p;
 };
 

@@ -109,8 +109,8 @@ GstClockTime gst_wall_clock_adjust_safe
 
 GstClock* gst_wall_clock_new()
 {
-  return
-  g_object_new (GST_TYPE_WALL_CLOCK, "name", "mywallclock",
-                "clock-type", GST_CLOCK_TYPE_REALTIME, NULL);
+  return g_object_new(GST_TYPE_WALL_CLOCK,
+                      "clock-type", GST_CLOCK_TYPE_REALTIME,
+                      NULL);
 }
 
