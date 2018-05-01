@@ -29,7 +29,8 @@ int ichabod_attach_rtmp(struct ichabod_bin_s* bin, const char* broadcast_url) {
   GstPad* v_mux_sink = gst_element_get_request_pad(mux, "video");
   GstPad* a_mux_sink = gst_element_get_request_pad(mux, "audio");
 
-  return ichabod_bin_attach_mux_sink_pad(bin, a_mux_sink, v_mux_sink);
+  ret = ichabod_bin_attach_mux_sink_pad(bin, a_mux_sink, v_mux_sink);
+  return ret;
 }
 
 int ichabod_attach_file(struct ichabod_bin_s* bin, const char* path) {

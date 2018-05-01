@@ -86,8 +86,6 @@ static void on_horseman_output_request(struct horseman_s* horseman,
   g_print("ichabod_bin: received output request type %d\n",
           output->output_type);
   struct ichabod_bin_s* pthis = (struct ichabod_bin_s*)p;
-  gboolean result = gst_element_set_state(pthis->pipeline, GST_STATE_PAUSED);
-  g_assert(result);
   switch (output->output_type) {
     case horseman_output_type_file:
       ichabod_attach_file(pthis, output->location);
@@ -99,9 +97,6 @@ static void on_horseman_output_request(struct horseman_s* horseman,
       g_print("ichabod_bin: WARNING: unknown output type request\n");
       break;
   }
-
-  result = gst_element_set_state(pthis->pipeline, GST_STATE_PLAYING);
-  g_assert(result);
 
   GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pthis->pipeline),
                             GST_DEBUG_GRAPH_SHOW_ALL,
