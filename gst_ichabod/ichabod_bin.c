@@ -221,6 +221,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   g_object_set(G_OBJECT(pthis->venc), "speed-preset", 1, NULL);
   // experiment: fixed keyframe rate for rtmp streams
   g_object_set(G_OBJECT(pthis->venc), "key-int-max", 60, NULL);
+  // x264.tune = zerolatency
   //g_object_set(G_OBJECT(pthis->venc), "tune", 4, NULL);
   // pass values indexed from gstx264enc.c. Not sure how to reference the actual
   // object, so for testing purposes, 5=crf, 4=qp, 0=cbr. :-|
@@ -246,7 +247,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 
   // raw media multiqueue
   g_object_set(G_OBJECT(pthis->mqueue_src),
-               "max-size-time", 1 * GST_SECOND,
+               "max-size-time", 5 * GST_SECOND,
                NULL);
 
   // start with audio and video flows blocked from multiplexer, to allow full
@@ -348,7 +349,7 @@ int setup_bin(struct ichabod_bin_s* pthis) {
 //  gst_element_get_static_pad(pthis->fake_mux_asink, "sink");
 //  ichabod_bin_attach_mux_sink_pad(pthis, fake_audio_mux_sink,
 //                                  fake_video_mux_sink);
-  gst_bin_sync_children_states(GST_BIN(pthis->pipeline));
+//  gst_bin_sync_children_states(GST_BIN(pthis->pipeline));
 
   gst_caps_unref(acaps);
   acaps = NULL;
