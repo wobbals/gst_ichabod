@@ -354,7 +354,7 @@ int horseman_stop(struct horseman_s* pthis) {
   // don't wait for more than a second.
   // _loop_close will crash if there are executing jobs, but at this point
   // there's not much we can do about it
-  while(get_work_count(pthis) > 0 && drain_count < 1000) {
+  while (get_work_count(pthis) > 0 && drain_count < 1000) {
     usleep(1000);
   }
   do {

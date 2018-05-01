@@ -35,7 +35,7 @@ void screencast_src_alloc(struct screencast_src_s** screencast_src_out) {
   gst_app_src_set_caps(pthis->element, caps);
   gst_app_src_set_size(pthis->element, -1);
   gst_app_src_set_duration(pthis->element, GST_CLOCK_TIME_NONE);
-  //gst_app_src_set_stream_type(pthis->element, GST_APP_STREAM_TYPE_STREAM);
+  gst_app_src_set_stream_type(pthis->element, GST_APP_STREAM_TYPE_STREAM);
   //gst_base_src_set_format(GST_BASE_SRC(pthis->element), GST_FORMAT_TIME);
 
   static GstAppSrcCallbacks callbacks = { 0 };
@@ -45,8 +45,6 @@ void screencast_src_alloc(struct screencast_src_s** screencast_src_out) {
   gst_app_src_set_callbacks(pthis->element, &callbacks, pthis, NULL);
 
   pthis->wall_clock = gst_wall_clock_new();
-//  gboolean has_clock = gst_element_set_clock(pthis->element, pthis->wall_clock);
-//  g_assert(has_clock);
 
   *screencast_src_out = pthis;
 }

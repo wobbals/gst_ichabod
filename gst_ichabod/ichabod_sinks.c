@@ -11,10 +11,11 @@
 
 int ichabod_attach_rtmp(struct ichabod_bin_s* bin, const char* broadcast_url) {
   g_print("ichabod_sinks: attach rtmp output %s\n", broadcast_url);
-GstElement* mux = gst_element_factory_make("flvmux", "flvmux");
-  GstElement* sink = gst_element_factory_make("rtmpsink", "rtmpsink");
+  GstElement* mux = gst_element_factory_make("flvmux", NULL);
+  GstElement* sink = gst_element_factory_make("rtmpsink", NULL);
 
   g_object_set(G_OBJECT(mux), "streamable", TRUE, NULL);
+  // g_object_set(G_OBJECT(mux), "latency", 1 * GST_SECOND, NULL);
   g_object_set(G_OBJECT(sink), "location", broadcast_url, NULL);
   // don't sync on sink. sink should not sync.
   g_object_set(G_OBJECT(sink), "sync", FALSE, NULL);
@@ -33,8 +34,8 @@ GstElement* mux = gst_element_factory_make("flvmux", "flvmux");
 
 int ichabod_attach_file(struct ichabod_bin_s* bin, const char* path) {
   g_print("ichabod_sinks: attach file output %s\n", path);
-  GstElement* mux = gst_element_factory_make("mp4mux", "mymux");
-  GstElement* sink = gst_element_factory_make("filesink", "fsink");
+  GstElement* mux = gst_element_factory_make("mp4mux", NULL);
+  GstElement* sink = gst_element_factory_make("filesink", NULL);
 
   // configure multiplexer
   g_object_set(G_OBJECT(mux), "faststart", TRUE, NULL);

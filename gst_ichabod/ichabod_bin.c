@@ -69,9 +69,9 @@ static void on_horseman_video_frame(struct horseman_s* queue,
     g_print("ichabod_bin: sending pipeline end-of-stream\n");
     // We can send EOS to vsrc, but it doesn't seem to be enough to interrupt
     // the audio src.
-    //screencast_src_send_eos(pthis->screencast_src);
+     screencast_src_send_eos(pthis->screencast_src);
     // So instead, we just eos the whole pipeline.
-    gst_element_send_event(pthis->pipeline, gst_event_new_eos());
+    //gst_element_send_event(pthis->pipeline, gst_event_new_eos());
   } else {
     screencast_src_push_frame(pthis->screencast_src,
                               frame->timestamp,
@@ -158,8 +158,8 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   pthis->audio_enc_tee = gst_element_factory_make("tee", NULL);
   pthis->audio_raw_tee = gst_element_factory_make("tee", NULL);
   pthis->video_tee = gst_element_factory_make("tee", NULL);
-  pthis->fake_mux_asink = gst_element_factory_make("fakesink", NULL);
-  pthis->fake_mux_vsink = gst_element_factory_make("fakesink", NULL);
+  //pthis->fake_mux_asink = gst_element_factory_make("fakesink", NULL);
+  //pthis->fake_mux_vsink = gst_element_factory_make("fakesink", NULL);
 
   if (!pthis->pipeline) {
     g_printerr("pipeline alloc failure.\n");
@@ -178,10 +178,11 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   }
 
   /* Set up the pipeline */
+  //g_object_set(G_OBJECT(pthis->pipeline), "message-forward", TRUE, NULL);
 
   // set the input to the source element
   // not needed as long as long as we use the default source
-  //g_object_set (G_OBJECT (source), "device", "0", NULL);
+  //g_object_set(G_OBJECT(pthis->asource), "device", "0", NULL);
 
   // configure source pad callbacks as a preroll workaround
   GstPad* vsrc_pad = gst_element_get_static_pad(pthis->vsource, "src");
@@ -211,8 +212,8 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   asrc_pad = NULL;
 
   // give plenty of buffer tolerance to the audio source, which can get finicky
-  // when the pipeline runs slowly. (read: nearly always)
-  g_object_set(G_OBJECT(pthis->asource), "buffer-time", 10000000, NULL);
+  // when the pipeline runs slowly
+  g_object_set(G_OBJECT(pthis->asource), "buffer-time", 5000000, NULL);
 
   // configure video encoder
   // TODO: switch encoding settings to bitrate target if RTMP sink is attached.
@@ -243,14 +244,15 @@ int setup_bin(struct ichabod_bin_s* pthis) {
   g_object_set (G_OBJECT (pthis->afps), "silent", TRUE, NULL);
   g_object_set (G_OBJECT (pthis->afps), "skip-to-first", FALSE, NULL);
 
+  // raw media multiqueue
   g_object_set(G_OBJECT(pthis->mqueue_src),
-               "max-size-time", 5 * GST_SECOND,
+               "max-size-time", 1 * GST_SECOND,
                NULL);
 
   // start with audio and video flows blocked from multiplexer, to allow full
   // pipeline pre-roll before writing to file
-//  g_object_set(G_OBJECT(pthis->video_out_valve), "drop", TRUE, NULL);
-//  g_object_set(G_OBJECT(pthis->audio_out_valve), "drop", TRUE, NULL);
+  g_object_set(G_OBJECT(pthis->video_out_valve), "drop", TRUE, NULL);
+  g_object_set(G_OBJECT(pthis->audio_out_valve), "drop", TRUE, NULL);
 
   // Allow output sinks to run even when we have no outputs attached
 //  g_object_set(G_OBJECT(pthis->audio_enc_tee), "allow-not-linked", TRUE, NULL);
@@ -281,8 +283,8 @@ int setup_bin(struct ichabod_bin_s* pthis) {
                    pthis->video_out_valve,
                    pthis->audio_enc_tee,
                    pthis->video_tee,
-                   pthis->fake_mux_asink,
-                   pthis->fake_mux_vsink,
+                   //pthis->fake_mux_asink,
+                   //pthis->fake_mux_vsink,
                    NULL);
 
   // link video element chain
@@ -408,6 +410,7 @@ static GstPadProbeReturn on_video_downstream
   GstEvent* event = gst_pad_probe_info_get_event(info);
   GstEventType type = GST_EVENT_TYPE(event);
   if (GST_EVENT_EOS == type) {
+    g_print("Pad EOS detected. Forwarding to pipeline\n");
     // forward video eos to the rest of the pipeline
     gst_element_send_event(pthis->pipeline, gst_event_new_eos());
   }
@@ -417,14 +420,15 @@ static GstPadProbeReturn on_video_downstream
 
 static gboolean on_gst_bus(GstBus* bus, GstMessage* msg, gpointer data)
 {
+  g_print("ichabod_bin: on_gst_bus\n");
   GMainLoop* loop = (GMainLoop*)data;
 
-  switch (GST_MESSAGE_TYPE (msg)) {
+  switch (GST_MESSAGE_TYPE(msg)) {
 
     case GST_MESSAGE_EOS:
     {
-      g_print ("End of stream\n");
-      g_main_loop_quit (loop);
+      g_print("End of stream\n");
+      g_main_loop_quit(loop);
       break;
     }
     case GST_MESSAGE_ERROR: {
@@ -464,6 +468,14 @@ static gboolean on_gst_bus(GstBus* bus, GstMessage* msg, gpointer data)
       g_print("state change\n");
       break;
     }
+    case GST_MESSAGE_ELEMENT:
+    {
+      const GstStructure* structure = gst_message_get_structure(msg);
+      gchar* sz_struct_str = gst_structure_to_string(structure);
+      g_print("element message: %s\n", sz_struct_str);
+      g_free(sz_struct_str);
+      break;
+    }
     default:
     {
       g_print("other event (%s)\n", GST_MESSAGE_TYPE_NAME(msg));
@@ -500,6 +512,8 @@ int ichabod_bin_start(struct ichabod_bin_s* pthis) {
   g_print("Running...\n");
   g_main_loop_run(pthis->loop);
 
+  horseman_stop(pthis->horseman);
+
   /* Out of the main loop, clean up nicely */
   g_print("Returned, stopping playback\n");
   gst_element_set_state(pthis->pipeline, GST_STATE_NULL);
@@ -532,13 +546,10 @@ int ichabod_bin_attach_mux_sink_pad
   GstPad* v_tee_src_pad =
   gst_element_get_request_pad(pthis->video_tee, "src_%u");
 
-  gchar* pad_name = gst_pad_get_name(a_tee_src_pad);
-  char queue_name[32];
-  sprintf(queue_name, "mqueue_%s", pad_name);
-  GstElement* mqueue = gst_element_factory_make("multiqueue", queue_name);
+  GstElement* mqueue = gst_element_factory_make("multiqueue", NULL);
   ichabod_bin_add_element(pthis, mqueue);
-  g_object_set(G_OBJECT(mqueue), "max-size-time", 50 * GST_MSECOND, NULL);
-  g_free(pad_name);
+  //gst_bin_add(GST_BIN(pthis->pipeline), mqueue);
+  g_object_set(G_OBJECT(mqueue), "max-size-time", 10 * GST_SECOND, NULL);
 
   GstPad* mqueue_v_sink_pad = gst_element_get_request_pad(mqueue, "sink_0");
   GstPad* mqueue_v_src_pad = gst_element_get_static_pad(mqueue, "src_0");
