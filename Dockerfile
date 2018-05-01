@@ -100,9 +100,11 @@ cd /var/lib/ichabod/build && \
 cmake .. && \
 make -j$(nproc) && mv ichabod ../bin && cd .. && \
 rm -rf ichabod gst_ichabod build CMakeLists.txt && \
-sed -i 's/load-module module-native-protocol-unix/load-module module-native-protocol-unix auth-anonymous=1/g' /etc/pulse/system.pa
+sed -i 's/load-module module-console-kit/###load-module module-console-kit/g' /etc/pulse/default.pa && \
+sed -i 's/load-module module-native-protocol-unix/load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0/g' /etc/pulse/system.pa && \
+sed -i 's/load-module module-native-protocol-unix/load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0/g' /etc/pulse/default.pa
 
-
+#ENV PULSE_COOKIE=/tmp/pulse_cookie
 ENV LD_LIBRARY_PATH=/usr/local/lib
 ENV PATH=${PATH}:/var/lib/ichabod/bin
 ENV ICHABOD=/var/lib/ichabod/bin/ichabod
