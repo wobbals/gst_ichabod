@@ -99,7 +99,9 @@ RUN mkdir -p /var/lib/ichabod/build /var/lib/ichabod/bin && \
 cd /var/lib/ichabod/build && \
 cmake .. && \
 make -j$(nproc) && mv ichabod ../bin && cd .. && \
-rm -rf ichabod gst_ichabod build CMakeLists.txt
+rm -rf ichabod gst_ichabod build CMakeLists.txt && \
+sed -i 's/load-module module-native-protocol-unix/load-module module-native-protocol-unix auth-anonymous=1/g' /etc/pulse/system.pa
+
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 ENV PATH=${PATH}:/var/lib/ichabod/bin
