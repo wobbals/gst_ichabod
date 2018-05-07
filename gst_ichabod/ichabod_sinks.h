@@ -12,5 +12,7 @@
 
 int ichabod_attach_rtmp(struct ichabod_bin_s* bin, const char* broadcast_url);
 int ichabod_attach_file(struct ichabod_bin_s* bin, const char* path);
+int ichabod_attach_rtp(struct ichabod_bin_s* bin,
+                       struct rtp_relay_config_s* rtp_config);
 
 #endif /* broadcast_sink_h */

@@ -15,6 +15,8 @@
 
 #include <gst/gst.h>
 
+#include "rtp_relay.h"
+
 struct ichabod_bin_s;
 
 void ichabod_bin_alloc(struct ichabod_bin_s** ichabod_bin_out);
@@ -25,5 +27,11 @@ int ichabod_bin_stop(struct ichabod_bin_s* ichabod_bin);
 int ichabod_bin_add_element(struct ichabod_bin_s* bin, GstElement* element);
 int ichabod_bin_attach_mux_sink_pad
 (struct ichabod_bin_s* bin, GstPad* audio_sink, GstPad* video_sink);
+
+GstPad* ichabod_bin_create_audio_src(struct ichabod_bin_s* bin, GstCaps* caps);
+GstPad* ichabod_bin_create_video_src(struct ichabod_bin_s* bin, GstCaps* caps);
+
+void ichabod_bin_set_rtp_relay(struct ichabod_bin_s* ichabod_bin,
+                               struct rtp_relay_s* rtp_relay);
 
 #endif /* ichabod_bin_h */

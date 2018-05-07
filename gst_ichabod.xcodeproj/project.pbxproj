@@ -17,17 +17,48 @@
 		D42E5A7F1F65737E00C89691 /* libgmodule-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7A1F65737E00C89691 /* libgmodule-2.0.0.dylib */; };
 		D42E5A801F65737E00C89691 /* libgobject-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7B1F65737E00C89691 /* libgobject-2.0.0.dylib */; };
 		D42E5A821F65737E00C89691 /* libgstreamer-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */; };
+		D444E65020768B3100C671EC /* rtp_relay.c in Sources */ = {isa = PBXBuildFile; fileRef = D444E64F20768B3100C671EC /* rtp_relay.c */; };
+		D444E6512076C2BC00C671EC /* rtp_relay.c in Sources */ = {isa = PBXBuildFile; fileRef = D444E64F20768B3100C671EC /* rtp_relay.c */; };
+		D444E655207BC1D400C671EC /* libgio-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D444E654207BC1D300C671EC /* libgio-2.0.0.dylib */; };
+		D444E658207C132500C671EC /* webrtc_relay.c in Sources */ = {isa = PBXBuildFile; fileRef = D444E657207C132500C671EC /* webrtc_relay.c */; };
+		D444E659207C1FBE00C671EC /* libgstwebrtc-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C36B7C206C3A420011C048 /* libgstwebrtc-1.0.0.dylib */; };
+		D444E65B207C1FD200C671EC /* libgstsdp-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C36B7B206C3A420011C048 /* libgstsdp-1.0.0.dylib */; };
+		D444E65C207C1FE000C671EC /* webrtc_control.c in Sources */ = {isa = PBXBuildFile; fileRef = D49AA40F206C2F5600F032C4 /* webrtc_control.c */; };
 		D4888C621FB61B9F00BD43F7 /* libogg.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */; };
+		D49AA3FE206C2EBE00F032C4 /* libuv.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947E1FD6038800485CA5 /* libuv.1.dylib */; };
+		D49AA3FF206C2EBE00F032C4 /* libzmq.5.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */; };
+		D49AA400206C2EBE00F032C4 /* libogg.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */; };
+		D49AA401206C2EBE00F032C4 /* libglib-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A791F65737E00C89691 /* libglib-2.0.0.dylib */; };
+		D49AA402206C2EBE00F032C4 /* libgmodule-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7A1F65737E00C89691 /* libgmodule-2.0.0.dylib */; };
+		D49AA403206C2EBE00F032C4 /* libgobject-2.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A7B1F65737E00C89691 /* libgobject-2.0.0.dylib */; };
+		D49AA404206C2EBE00F032C4 /* libgstbase-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D40EE2951FE0571C0039FA82 /* libgstbase-1.0.0.dylib */; };
+		D49AA406206C2EBE00F032C4 /* libgstcoreelements.so in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A721F65735400C89691 /* libgstcoreelements.so */; };
+		D49AA407206C2EBE00F032C4 /* libgstcoretracers.so in Frameworks */ = {isa = PBXBuildFile; fileRef = D42E5A731F65735400C89691 /* libgstcoretracers.so */; };
+		D49AA40D206C2ECD00F032C4 /* test_rtp_pusher.c in Sources */ = {isa = PBXBuildFile; fileRef = D49AA3F3206C2E9400F032C4 /* test_rtp_pusher.c */; };
+		D49AA411206C2F5A00F032C4 /* webrtc_control.c in Sources */ = {isa = PBXBuildFile; fileRef = D49AA40F206C2F5600F032C4 /* webrtc_control.c */; };
 		D4AF80E51FE1AAD500B1BD36 /* wallclock.c in Sources */ = {isa = PBXBuildFile; fileRef = D4AF80E41FE1AAD500B1BD36 /* wallclock.c */; };
+		D4C36B79206C39C40011C048 /* libgstreamer-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C36B78206C39C40011C048 /* libgstreamer-1.0.0.dylib */; };
+		D4C36B7D206C3A420011C048 /* libgstsdp-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C36B7B206C3A420011C048 /* libgstsdp-1.0.0.dylib */; };
+		D4C36B7E206C3A420011C048 /* libgstwebrtc-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C36B7C206C3A420011C048 /* libgstwebrtc-1.0.0.dylib */; };
 		D4C894781FD602AA00485CA5 /* horseman.c in Sources */ = {isa = PBXBuildFile; fileRef = D4C894761FD602AA00485CA5 /* horseman.c */; };
 		D4C8947D1FD6031600485CA5 /* libzmq.5.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */; };
 		D4C8947F1FD6038800485CA5 /* libuv.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C8947E1FD6038800485CA5 /* libuv.1.dylib */; };
-		D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */ = {isa = PBXBuildFile; fileRef = D4C894831FD7225700485CA5 /* gsthorsemansrc.c */; };
+		D4D6BC2B20814D0500A64331 /* screencast_src.c in Sources */ = {isa = PBXBuildFile; fileRef = D4D6BC2A20814D0500A64331 /* screencast_src.c */; };
+		D4D6BC2D208155D600A64331 /* libgstapp-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D4D6BC2C208155D500A64331 /* libgstapp-1.0.0.dylib */; };
 		D4ECAE7D1FD89794006A31C5 /* base64.c in Sources */ = {isa = PBXBuildFile; fileRef = D4ECAE7C1FD89794006A31C5 /* base64.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		D42E5A651F65705700C89691 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		D49AA408206C2EBE00F032C4 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -54,15 +85,28 @@
 		D42E5A7B1F65737E00C89691 /* libgobject-2.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgobject-2.0.0.dylib"; path = "../../../../usr/local/Cellar/glib/2.52.3/lib/libgobject-2.0.0.dylib"; sourceTree = "<group>"; };
 		D42E5A7C1F65737E00C89691 /* libgstbase-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstbase-1.0.0.dylib"; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/libgstbase-1.0.0.dylib"; sourceTree = "<group>"; };
 		D42E5A7D1F65737E00C89691 /* libgstreamer-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstreamer-1.0.0.dylib"; path = "../../../../usr/local/Cellar/gstreamer/1.12.2/lib/libgstreamer-1.0.0.dylib"; sourceTree = "<group>"; };
+		D444E64E20768B3100C671EC /* rtp_relay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rtp_relay.h; sourceTree = "<group>"; };
+		D444E64F20768B3100C671EC /* rtp_relay.c */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = rtp_relay.c; sourceTree = "<group>"; };
+		D444E654207BC1D300C671EC /* libgio-2.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgio-2.0.0.dylib"; path = "../../../../usr/local/Cellar/glib/2.56.0/lib/libgio-2.0.0.dylib"; sourceTree = "<group>"; };
+		D444E656207C132500C671EC /* webrtc_relay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webrtc_relay.h; sourceTree = "<group>"; };
+		D444E657207C132500C671EC /* webrtc_relay.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = webrtc_relay.c; sourceTree = "<group>"; };
 		D4888C611FB61B9F00BD43F7 /* libogg.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libogg.0.dylib; path = ../../../../usr/local/Cellar/libogg/1.3.2/lib/libogg.0.dylib; sourceTree = "<group>"; };
+		D49AA3F3206C2E9400F032C4 /* test_rtp_pusher.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rtp_pusher.c; sourceTree = "<group>"; };
+		D49AA40C206C2EBE00F032C4 /* rtp_pusher */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = rtp_pusher; sourceTree = BUILT_PRODUCTS_DIR; };
+		D49AA40E206C2F5600F032C4 /* webrtc_control.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webrtc_control.h; sourceTree = "<group>"; };
+		D49AA40F206C2F5600F032C4 /* webrtc_control.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = webrtc_control.c; sourceTree = "<group>"; };
 		D4AF80E31FE1AAD500B1BD36 /* wallclock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wallclock.h; sourceTree = "<group>"; };
 		D4AF80E41FE1AAD500B1BD36 /* wallclock.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wallclock.c; sourceTree = "<group>"; };
+		D4C36B78206C39C40011C048 /* libgstreamer-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstreamer-1.0.0.dylib"; path = "../../../../usr/local/lib/libgstreamer-1.0.0.dylib"; sourceTree = "<group>"; };
+		D4C36B7B206C3A420011C048 /* libgstsdp-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstsdp-1.0.0.dylib"; path = "../../../../usr/local/lib/libgstsdp-1.0.0.dylib"; sourceTree = "<group>"; };
+		D4C36B7C206C3A420011C048 /* libgstwebrtc-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstwebrtc-1.0.0.dylib"; path = "../../../../usr/local/lib/libgstwebrtc-1.0.0.dylib"; sourceTree = "<group>"; };
 		D4C894761FD602AA00485CA5 /* horseman.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = horseman.c; sourceTree = "<group>"; };
 		D4C894771FD602AA00485CA5 /* horseman.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = horseman.h; sourceTree = "<group>"; };
 		D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libzmq.5.dylib; path = ../../../../usr/local/Cellar/zeromq/4.2.2/lib/libzmq.5.dylib; sourceTree = "<group>"; };
 		D4C8947E1FD6038800485CA5 /* libuv.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libuv.1.dylib; path = ../../../../usr/local/Cellar/libuv/1.13.1/lib/libuv.1.dylib; sourceTree = "<group>"; };
-		D4C894831FD7225700485CA5 /* gsthorsemansrc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gsthorsemansrc.c; sourceTree = "<group>"; };
-		D4C894841FD7225700485CA5 /* gsthorsemansrc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gsthorsemansrc.h; sourceTree = "<group>"; };
+		D4D6BC2920814D0500A64331 /* screencast_src.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = screencast_src.h; sourceTree = "<group>"; };
+		D4D6BC2A20814D0500A64331 /* screencast_src.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = screencast_src.c; sourceTree = "<group>"; };
+		D4D6BC2C208155D500A64331 /* libgstapp-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libgstapp-1.0.0.dylib"; path = "../../../../usr/local/lib/libgstapp-1.0.0.dylib"; sourceTree = "<group>"; };
 		D4ECAE7B1FD89794006A31C5 /* base64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = base64.h; sourceTree = "<group>"; };
 		D4ECAE7C1FD89794006A31C5 /* base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = base64.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -72,6 +116,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D4D6BC2D208155D600A64331 /* libgstapp-1.0.0.dylib in Frameworks */,
+				D444E65B207C1FD200C671EC /* libgstsdp-1.0.0.dylib in Frameworks */,
+				D444E659207C1FBE00C671EC /* libgstwebrtc-1.0.0.dylib in Frameworks */,
+				D444E655207BC1D400C671EC /* libgio-2.0.0.dylib in Frameworks */,
 				D4C8947F1FD6038800485CA5 /* libuv.1.dylib in Frameworks */,
 				D4C8947D1FD6031600485CA5 /* libzmq.5.dylib in Frameworks */,
 				D4888C621FB61B9F00BD43F7 /* libogg.0.dylib in Frameworks */,
@@ -82,6 +130,25 @@
 				D42E5A821F65737E00C89691 /* libgstreamer-1.0.0.dylib in Frameworks */,
 				D42E5A741F65735400C89691 /* libgstcoreelements.so in Frameworks */,
 				D42E5A751F65735400C89691 /* libgstcoretracers.so in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D49AA3FD206C2EBE00F032C4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4C36B7D206C3A420011C048 /* libgstsdp-1.0.0.dylib in Frameworks */,
+				D4C36B7E206C3A420011C048 /* libgstwebrtc-1.0.0.dylib in Frameworks */,
+				D4C36B79206C39C40011C048 /* libgstreamer-1.0.0.dylib in Frameworks */,
+				D49AA3FE206C2EBE00F032C4 /* libuv.1.dylib in Frameworks */,
+				D49AA3FF206C2EBE00F032C4 /* libzmq.5.dylib in Frameworks */,
+				D49AA400206C2EBE00F032C4 /* libogg.0.dylib in Frameworks */,
+				D49AA401206C2EBE00F032C4 /* libglib-2.0.0.dylib in Frameworks */,
+				D49AA402206C2EBE00F032C4 /* libgmodule-2.0.0.dylib in Frameworks */,
+				D49AA403206C2EBE00F032C4 /* libgobject-2.0.0.dylib in Frameworks */,
+				D49AA404206C2EBE00F032C4 /* libgstbase-1.0.0.dylib in Frameworks */,
+				D49AA406206C2EBE00F032C4 /* libgstcoreelements.so in Frameworks */,
+				D49AA407206C2EBE00F032C4 /* libgstcoretracers.so in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,6 +168,7 @@
 			isa = PBXGroup;
 			children = (
 				D42E5A671F65705700C89691 /* gst_ichabod */,
+				D49AA40C206C2EBE00F032C4 /* rtp_pusher */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -112,8 +180,6 @@
 				D4ECAE7C1FD89794006A31C5 /* base64.c */,
 				D4C894771FD602AA00485CA5 /* horseman.h */,
 				D4C894761FD602AA00485CA5 /* horseman.c */,
-				D4C894841FD7225700485CA5 /* gsthorsemansrc.h */,
-				D4C894831FD7225700485CA5 /* gsthorsemansrc.c */,
 				D42E5A6A1F65705700C89691 /* main.c */,
 				D40EE2981FE05AD30039FA82 /* ichabod_bin.h */,
 				D40EE2991FE05AD30039FA82 /* ichabod_bin.c */,
@@ -121,6 +187,15 @@
 				D4AF80E41FE1AAD500B1BD36 /* wallclock.c */,
 				D4226D291FF5746C007FA4D5 /* ichabod_sinks.h */,
 				D4226D2A1FF5746C007FA4D5 /* ichabod_sinks.c */,
+				D49AA3F3206C2E9400F032C4 /* test_rtp_pusher.c */,
+				D444E656207C132500C671EC /* webrtc_relay.h */,
+				D444E657207C132500C671EC /* webrtc_relay.c */,
+				D49AA40E206C2F5600F032C4 /* webrtc_control.h */,
+				D49AA40F206C2F5600F032C4 /* webrtc_control.c */,
+				D444E64E20768B3100C671EC /* rtp_relay.h */,
+				D444E64F20768B3100C671EC /* rtp_relay.c */,
+				D4D6BC2920814D0500A64331 /* screencast_src.h */,
+				D4D6BC2A20814D0500A64331 /* screencast_src.c */,
 			);
 			path = gst_ichabod;
 			sourceTree = "<group>";
@@ -128,6 +203,11 @@
 		D42E5A711F65735400C89691 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D4D6BC2C208155D500A64331 /* libgstapp-1.0.0.dylib */,
+				D444E654207BC1D300C671EC /* libgio-2.0.0.dylib */,
+				D4C36B7B206C3A420011C048 /* libgstsdp-1.0.0.dylib */,
+				D4C36B7C206C3A420011C048 /* libgstwebrtc-1.0.0.dylib */,
+				D4C36B78206C39C40011C048 /* libgstreamer-1.0.0.dylib */,
 				D40EE2951FE0571C0039FA82 /* libgstbase-1.0.0.dylib */,
 				D4C8947E1FD6038800485CA5 /* libuv.1.dylib */,
 				D4C8947C1FD6031600485CA5 /* libzmq.5.dylib */,
@@ -169,6 +249,23 @@
 			productReference = D42E5A671F65705700C89691 /* gst_ichabod */;
 			productType = "com.apple.product-type.tool";
 		};
+		D49AA3F4206C2EBE00F032C4 /* rtp_pusher */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D49AA409206C2EBE00F032C4 /* Build configuration list for PBXNativeTarget "rtp_pusher" */;
+			buildPhases = (
+				D49AA3F5206C2EBE00F032C4 /* Sources */,
+				D49AA3FD206C2EBE00F032C4 /* Frameworks */,
+				D49AA408206C2EBE00F032C4 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = rtp_pusher;
+			productName = gst_ichabod;
+			productReference = D49AA40C206C2EBE00F032C4 /* rtp_pusher */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -203,6 +300,7 @@
 			projectRoot = "";
 			targets = (
 				D42E5A661F65705700C89691 /* gst_ichabod */,
+				D49AA3F4206C2EBE00F032C4 /* rtp_pusher */,
 			);
 		};
 /* End PBXProject section */
@@ -212,13 +310,26 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D444E65020768B3100C671EC /* rtp_relay.c in Sources */,
+				D444E658207C132500C671EC /* webrtc_relay.c in Sources */,
+				D4D6BC2B20814D0500A64331 /* screencast_src.c in Sources */,
+				D444E65C207C1FE000C671EC /* webrtc_control.c in Sources */,
 				D4226D2B1FF5746C007FA4D5 /* ichabod_sinks.c in Sources */,
-				D4C894851FD7225700485CA5 /* gsthorsemansrc.c in Sources */,
 				D40EE29A1FE05AD30039FA82 /* ichabod_bin.c in Sources */,
 				D4C894781FD602AA00485CA5 /* horseman.c in Sources */,
 				D4ECAE7D1FD89794006A31C5 /* base64.c in Sources */,
 				D4AF80E51FE1AAD500B1BD36 /* wallclock.c in Sources */,
 				D42E5A6B1F65705700C89691 /* main.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D49AA3F5206C2EBE00F032C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D49AA411206C2F5A00F032C4 /* webrtc_control.c in Sources */,
+				D444E6512076C2BC00C671EC /* rtp_relay.c in Sources */,
+				D49AA40D206C2ECD00F032C4 /* test_rtp_pusher.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,12 +442,58 @@
 					/usr/local/Cellar/libogg/1.3.2/lib,
 					/usr/local/Cellar/zeromq/4.2.2/lib,
 					/usr/local/Cellar/libuv/1.13.1/lib,
+					/usr/local/Cellar/glib/2.56.0/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
 		D42E5A701F65705700C89691 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					"/usr/local/include/gstreamer-1.0",
+					"/usr/local/include/glib-2.0",
+					"/usr/local/lib/glib-2.0/include",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/lib,
+					/usr/local/Cellar/glib/2.52.3/lib,
+					"/usr/local/lib/gstreamer-1.0",
+					/usr/local/Cellar/libogg/1.3.2/lib,
+					/usr/local/Cellar/zeromq/4.2.2/lib,
+					/usr/local/Cellar/libuv/1.13.1/lib,
+					/usr/local/Cellar/glib/2.56.0/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		D49AA40A206C2EBE00F032C4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					"/usr/local/include/gstreamer-1.0",
+					"/usr/local/include/glib-2.0",
+					"/usr/local/lib/glib-2.0/include",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/lib,
+					/usr/local/Cellar/glib/2.52.3/lib,
+					"/usr/local/lib/gstreamer-1.0",
+					/usr/local/Cellar/libogg/1.3.2/lib,
+					/usr/local/Cellar/zeromq/4.2.2/lib,
+					/usr/local/Cellar/libuv/1.13.1/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		D49AA40B206C2EBE00F032C4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
@@ -375,6 +532,15 @@
 			buildConfigurations = (
 				D42E5A6F1F65705700C89691 /* Debug */,
 				D42E5A701F65705700C89691 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D49AA409206C2EBE00F032C4 /* Build configuration list for PBXNativeTarget "rtp_pusher" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D49AA40A206C2EBE00F032C4 /* Debug */,
+				D49AA40B206C2EBE00F032C4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
